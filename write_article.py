@@ -1,236 +1,351 @@
-from anthropic import Anthropic
-import re
-import os
+import streamlit as st
+from write_article import generate_article
+from add_internal_links import add_internal_links
+import json
 import time
 
-def generate_article(article_brief_text, company_brief_text, icp_brief_text, writing_guidelines_text, api_key, progress_callback=None):
-    """
-    Generate an article from briefs using Claude AI.
+st.set_page_config(page_title="Article Generator - Multi-Client", page_icon="📝", layout="wide")
+
+# Initialize session state
+if 'clients' not in st.session_state:
+    st.session_state.clients = {}
+if 'rows' not in st.session_state:
+    st.session_state.rows = [{'id': 0}]
+if 'next_id' not in st.session_state:
+    st.session_state.next_id = 1
+if 'queue' not in st.session_state:
+    st.session_state.queue = []
+if 'results' not in st.session_state:
+    st.session_state.results = {}
+if 'selected_client' not in st.session_state:
+    st.session_state.selected_client = None
+
+# Get API key from secrets (no user input needed)
+try:
+    api_key = st.secrets["ANTHROPIC_API_KEY"]
+except:
+    st.error("API key not configured. Contact administrator.")
+    st.stop()
+
+# Main tabs
+tab1, tab2, tab3 = st.tabs(["📁 Manage Clients", "📝 Generate Articles", "🔗 Add Internal Links"])
+
+# TAB 1: MANAGE CLIENTS
+with tab1:
+    st.header("Client Management")
     
-    Args:
-        article_brief_text: Article outline with H2/H3 sections
-        company_brief_text: Company context
-        icp_brief_text: Audience personas
-        writing_guidelines_text: Tone/style guidelines (can be empty string)
-        api_key: Anthropic API key
-        progress_callback: Optional function to call with progress updates (text, progress_pct)
+    col1, col2 = st.columns([2, 1])
     
-    Returns:
-        tuple: (final_article_text, log_text)
-    """
+    with col1:
+        st.subheader("Create New Client")
+        
+        new_client_name = st.text_input("Client Name", placeholder="e.g., Vector, Acme Corp")
+        
+        col_a, col_b = st.columns(2)
+        
+        with col_a:
+    new_company_brief = st.file_uploader("Company Brief", type=['txt'], key="new_company")
+    new_icp_brief = st.file_uploader("ICP Brief", type=['txt'], key="new_icp")
+
+with col_b:
+    new_guidelines = st.file_uploader("Writing Guidelines (optional)", type=['txt'], key="new_guidelines")
+    new_sitemap_url = st.text_input("Sitemap URL (optional)", placeholder="https://example.com/sitemap.xml", key="new_sitemap")
+        
+        if st.button("➕ Create Client", type="primary"):
+    if new_client_name and new_company_brief and new_icp_brief:
+        st.session_state.clients[new_client_name] = {
+            'company_brief': new_company_brief.read().decode('utf-8'),
+            'icp_brief': new_icp_brief.read().decode('utf-8'),
+            'guidelines': new_guidelines.read().decode('utf-8') if new_guidelines else "",
+            'sitemap_url': new_sitemap_url.strip() if new_sitemap_url else ""
+        }
+                }
+                st.success(f"✅ Client '{new_client_name}' created!")
+                st.rerun()
+            else:
+                st.error("Please provide client name, company brief, and ICP brief")
     
-    def update_progress(text, pct=None):
-        if progress_callback:
-            progress_callback(text, pct)
+    with col2:
+        st.subheader("Existing Clients")
+        
+        if st.session_state.clients:
+            for client_name in st.session_state.clients.keys():
+                col_x, col_y = st.columns([3, 1])
+                col_x.write(f"📁 {client_name}")
+                if col_y.button("🗑️", key=f"delete_{client_name}"):
+                    del st.session_state.clients[client_name]
+                    if st.session_state.selected_client == client_name:
+                        st.session_state.selected_client = None
+                    st.rerun()
         else:
-            print(text)
+            st.info("No clients yet. Create one to get started.")
+
+# TAB 2: GENERATE ARTICLES
+with tab2:
+    st.header("Article Generator")
     
-    # Initialize client
-    client = Anthropic(api_key=api_key)
+    # Client selector
+    if not st.session_state.clients:
+        st.warning("⚠️ No clients available. Go to 'Manage Clients' tab to create one.")
+        st.stop()
     
-    update_progress("Reading input files...")
+    client_names = list(st.session_state.clients.keys())
+    selected_client = st.selectbox(
+        "Select Client",
+        options=client_names,
+        index=client_names.index(st.session_state.selected_client) if st.session_state.selected_client in client_names else 0
+    )
+    st.session_state.selected_client = selected_client
     
-    # Parse sections from brief (only H3 headers)
-    def parse_sections(brief):
-        sections = []
-        lines = brief.split('\n')
-        current_h2 = None
+    st.markdown(f"**Active Client:** {selected_client}")
+    st.markdown("---")
+    
+    # Add row button
+    col1, col2 = st.columns([6, 1])
+    with col2:
+        if st.button("➕ Add Row"):
+            st.session_state.rows.append({'id': st.session_state.next_id})
+            st.session_state.next_id += 1
+            st.rerun()
+    
+    # Header row
+    cols = st.columns([2, 3, 1.5, 2])
+    cols[0].markdown("**Title**")
+    cols[1].markdown("**Article Brief**")
+    cols[2].markdown("**Action**")
+    cols[3].markdown("**Status**")
+    
+    # Render each row
+    for idx, row in enumerate(st.session_state.rows):
+        row_id = row['id']
         
-        for line in lines:
-            line = line.strip()
-            # Strip bold markers
-            line = line.replace('**', '')
-            
-            # Track H2 for context
-            if line.startswith('## '):
-                current_h2 = line.replace('## ', '').strip()
-            # Only capture H3 headers as sections to write
-            elif line.startswith('### '):
-                h3_title = line.replace('### ', '').strip()
-                sections.append({
-                    'level': 'H3',
-                    'title': h3_title,
-                    'parent': current_h2
-                })
+        cols = st.columns([2, 3, 1.5, 2])
         
-        return sections
-    
-    sections = parse_sections(article_brief_text)
-    update_progress(f"✓ Parsed {len(sections)} H3 sections from brief")
-    
-    # Log file
-    log = []
-    log.append(f"Article Generation Log\n{'='*50}\n")
-    log.append(f"Total H3 sections to write: {len(sections)}\n\n")
-    
-    # Write each section
-    article_sections = {}
-    
-    def write_section(section, attempt=1):
-        section_key = f"{section['level']}: {section['title']}"
-        
-        update_progress(f"Writing {section_key} (attempt {attempt})...")
-        
-        prompt = f"""You are writing ONE SECTION of an article. Write ONLY this section, nothing else.
-
-ARTICLE BRIEF (for context):
-{article_brief_text}
-
-COMPANY CONTEXT:
-{company_brief_text}
-
-TARGET AUDIENCE:
-{icp_brief_text}
-
-{'WRITING GUIDELINES:\n' + writing_guidelines_text if writing_guidelines_text else ''}
-
-SECTION TO WRITE:
-{section['level']}: {section['title']}
-(This is a subsection under: {section['parent']})
-
-Instructions:
-- Write ONLY the body content for this H3 section
-- The section header will be added automatically - do NOT include it
-- Start directly with the paragraph content
-- Follow the structure and guidance in the article brief for this section
-- Match the tone and style specified in the guidelines
-- If word count is specified in the brief for this section, follow it
-- Use markdown formatting for any sub-bullets or emphasis within the content
-- Write in a professional, clear style appropriate for the target audience
-
-Write the section content now:"""
-
-        message = client.messages.create(
-            model="claude-sonnet-4-20250514",
-            max_tokens=3000,
-            messages=[{
-                "role": "user",
-                "content": prompt
-            }]
+        # Title input
+        title = cols[0].text_input(
+            f"Title", 
+            key=f"title_{row_id}",
+            label_visibility="collapsed",
+            placeholder="Article title..."
         )
         
-        section_content = message.content[0].text.strip()
-        log.append(f"✓ Wrote {section_key} (attempt {attempt})\n")
+        # Article Brief upload
+        article_brief = cols[1].file_uploader(
+            "Article Brief",
+            type=['md', 'txt'],
+            key=f"brief_{row_id}",
+            label_visibility="collapsed"
+        )
         
-        return section_content
-    
-    # Write all H3 sections
-    total_sections = len(sections)
-    for i, section in enumerate(sections, 1):
-        section_key = f"{section['level']}: {section['title']}"
-        article_sections[section_key] = write_section(section)
-        update_progress(f"Completed {i}/{total_sections} sections", (i / total_sections) * 0.7)
-        time.sleep(1)
-    
-    # Assemble full article (add H2 headers with H3 content)
-    def assemble_article():
-        full_article = []
-        current_h2 = None
+        # Generate button
+        with cols[2]:
+            # Check if this row has results
+            if row_id in st.session_state.results:
+                result = st.session_state.results[row_id]
+                if result['status'] == 'complete':
+                    st.success("✅ Done")
+                elif result['status'] == 'error':
+                    st.error("❌ Error")
+            # Check if in queue
+            elif row_id in st.session_state.queue:
+                queue_pos = st.session_state.queue.index(row_id) + 1
+                if queue_pos == 1:
+                    st.info("⏳ Running")
+                else:
+                    st.warning(f"Queue #{queue_pos}")
+            # Show generate button
+            else:
+                files_ready = article_brief and selected_client
+                if st.button(
+                    "🚀 Generate",
+                    key=f"gen_{row_id}",
+                    disabled=not files_ready,
+                    use_container_width=True
+                ):
+                    # Add to queue
+                    st.session_state.queue.append(row_id)
+                    # Store file data in session state
+                    client_data = st.session_state.clients[selected_client]
+                    st.session_state[f'data_{row_id}'] = {
+                        'title': title,
+                        'article_brief': article_brief.read().decode('utf-8'),
+                        'company_brief': client_data['company_brief'],
+                        'icp_brief': client_data['icp_brief'],
+                        'guidelines': client_data['guidelines']
+                    }
+                    st.rerun()
         
-        for section in sections:
-            # Add H2 header when it changes
-            if section['parent'] != current_h2:
-                current_h2 = section['parent']
-                full_article.append(f"\n## {current_h2}\n")
-            
-            # Add H3 header and content
-            section_key = f"{section['level']}: {section['title']}"
-            full_article.append(f"\n### {section['title']}\n")
-            full_article.append(article_sections[section_key])
+        # Status/Download column
+        with cols[3]:
+            if row_id in st.session_state.results:
+                result = st.session_state.results[row_id]
+                if result['status'] == 'complete':
+                    st.download_button(
+                        "📄 Download Article",
+                        data=result['article'],
+                        file_name=f"{title or 'article'}_{row_id}.md",
+                        mime="text/markdown",
+                        key=f"download_article_{row_id}",
+                        use_container_width=True
+                    )
+                    st.download_button(
+                        "📋 Download Log",
+                        data=result['log'],
+                        file_name=f"{title or 'article'}_{row_id}_log.txt",
+                        mime="text/plain",
+                        key=f"download_log_{row_id}",
+                        use_container_width=True
+                    )
+                elif result['status'] == 'error':
+                    st.caption(result['error'][:50] + "...")
+    
+    # Process queue
+    if st.session_state.queue:
+        current_row_id = st.session_state.queue[0]
         
-        return '\n'.join(full_article)
-    
-    draft_article = assemble_article()
-    
-    update_progress("✓ Draft article assembled", 0.75)
-    log.append("\n✓ Draft article assembled\n\n")
-    
-    # Review the article
-    update_progress("Reviewing article against requirements...", 0.80)
-    
-    review_prompt = f"""Review this article against the brief. Check for:
-
-1. All H3 sections from the brief are present
-2. Word count targets reasonably met (within 20% is acceptable)
-3. No duplicate H3 sections
-4. Content quality and accuracy
-
-ARTICLE BRIEF:
-{article_brief_text}
-
-{'WRITING GUIDELINES:\n' + writing_guidelines_text if writing_guidelines_text else ''}
-
-ARTICLE TO REVIEW:
-{draft_article}
-
-Respond in this format:
-
-STATUS: [PASS or FAIL]
-
-ISSUES: [If FAIL, list specific H3 sections that need revision and why. If PASS, write "None"]
-
-Focus on major issues only."""
-
-    review_message = client.messages.create(
-        model="claude-sonnet-4-20250514",
-        max_tokens=2000,
-        messages=[{
-            "role": "user",
-            "content": review_prompt
-        }]
-    )
-    
-    review_result = review_message.content[0].text.strip()
-    log.append("REVIEW RESULTS:\n")
-    log.append(review_result + "\n\n")
-    
-    update_progress("Review complete", 0.85)
-    
-    # Check if revisions needed
-    if "STATUS: FAIL" in review_result:
-        update_progress("⚠ Issues found. Rewriting affected sections...", 0.85)
+        st.markdown("---")
+        st.subheader(f"🔄 Generating Article (Row {current_row_id + 1})")
         
-        issues_section = review_result.split("ISSUES:")[1] if "ISSUES:" in review_result else ""
+        # Get stored data
+        data = st.session_state[f'data_{current_row_id}']
         
-        retry_count = 0
-        max_review_cycles = 2
+        # Progress tracking
+        progress_bar = st.progress(0)
+        status_text = st.empty()
         
-        while retry_count < max_review_cycles and "STATUS: FAIL" in review_result:
-            retry_count += 1
-            log.append(f"\n--- REVISION CYCLE {retry_count} ---\n")
-            
-            for section in sections:
-                section_key = f"{section['level']}: {section['title']}"
-                
-                if section['title'].lower() in issues_section.lower():
-                    update_progress(f"Rewriting {section_key}...")
-                    article_sections[section_key] = write_section(section, attempt=retry_count+1)
-                    time.sleep(1)
-            
-            draft_article = assemble_article()
-            
-            review_message = client.messages.create(
-                model="claude-sonnet-4-20250514",
-                max_tokens=2000,
-                messages=[{
-                    "role": "user",
-                    "content": review_prompt.replace("ARTICLE TO REVIEW:", f"ARTICLE TO REVIEW (Revision {retry_count}):")
-                }]
+        def update_progress(text, pct=None):
+            status_text.text(text)
+            if pct is not None:
+                progress_bar.progress(pct)
+        
+        # Generate article
+        try:
+            final_article, log = generate_article(
+                data['article_brief'],
+                data['company_brief'],
+                data['icp_brief'],
+                data['guidelines'],
+                api_key,
+                progress_callback=update_progress
             )
             
-            review_result = review_message.content[0].text.strip()
-            log.append(f"Review after revision {retry_count}:\n{review_result}\n\n")
+            # Store result
+            st.session_state.results[current_row_id] = {
+                'status': 'complete',
+                'article': final_article,
+                'log': log
+            }
             
-            if "STATUS: PASS" in review_result:
-                update_progress(f"✓ Article passed review after {retry_count} revision(s)", 0.95)
-                break
+            # Remove from queue
+            st.session_state.queue.pop(0)
+            
+            # Clean up data
+            del st.session_state[f'data_{current_row_id}']
+            
+            st.success(f"✅ Article {current_row_id + 1} complete!")
+            time.sleep(1)
+            st.rerun()
+            
+        except Exception as e:
+            # Store error
+            st.session_state.results[current_row_id] = {
+                'status': 'error',
+                'error': str(e)
+            }
+            
+            # Remove from queue
+            st.session_state.queue.pop(0)
+            
+            st.error(f"❌ Error: {str(e)}")
+            time.sleep(2)
+            st.rerun()
+    
+    # Show queue status in sidebar
+    if st.session_state.queue:
+        st.sidebar.markdown("---")
+        st.sidebar.subheader("📋 Generation Queue")
+        for idx, row_id in enumerate(st.session_state.queue, 1):
+            if idx == 1:
+                st.sidebar.write(f"🔄 Row {row_id + 1} - Generating...")
+            else:
+                st.sidebar.write(f"⏳ Row {row_id + 1} - Queued")
+
+# TAB 3: ADD INTERNAL LINKS
+with tab3:
+    st.header("Add Internal Links")
+    
+    # Client selector
+    if not st.session_state.clients:
+        st.warning("⚠️ No clients available. Go to 'Manage Clients' tab to create one.")
+        st.stop()
+    
+    link_client = st.selectbox(
+        "Select Client (for sitemap)",
+        options=list(st.session_state.clients.keys()),
+        key="link_client_select"
+    )
+    
+    client_data = st.session_state.clients[link_client]
+    
+    if not client_data.get('sitemap_url'):
+        st.warning(f"⚠️ Client '{link_client}' has no sitemap URL. Please edit the client to add one.")
+        st.stop()
+    
+    st.markdown(f"**Sitemap:** {client_data['sitemap_url']}")
+    st.markdown("---")
+    
+    # Input section
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        article_file = st.file_uploader("Upload Article", type=['md', 'txt'], help="The article to add links to")
+        num_links = st.number_input("Number of Links", min_value=1, max_value=20, value=5)
+    
+    with col2:
+        priority_urls = st.text_area(
+            "Priority URLs (optional)", 
+            placeholder="https://example.com/page1\nhttps://example.com/page2",
+            help="One URL per line. These will be prioritized if contextually relevant."
+        )
+    
+    # Generate button
+    if st.button("🔗 Add Internal Links", type="primary", disabled=not article_file):
         
-        if retry_count >= max_review_cycles and "STATUS: FAIL" in review_result:
-            update_progress(f"⚠ Article has issues after {max_review_cycles} attempts. Saving for manual review.", 0.95)
-            log.append(f"\n⚠ Maximum revision cycles reached. Saving for manual review.\n")
-    
-    update_progress("✓ Article generation complete!", 1.0)
-    
-    log_text = ''.join(log)
-    
-    return draft_article, log_text
+        # Read article
+        article_text = article_file.read().decode('utf-8')
+        
+        # Progress tracking
+        status_text = st.empty()
+        
+        def update_progress(text):
+            status_text.text(text)
+        
+        # Add links
+        try:
+            doc = add_internal_links(
+                article_text=article_text,
+                sitemap_url=client_data['sitemap_url'],
+                num_links=num_links,
+                priority_urls=priority_urls,
+                api_key=api_key,
+                progress_callback=update_progress
+            )
+            
+            # Save to bytes
+            from io import BytesIO
+            doc_bytes = BytesIO()
+            doc.save(doc_bytes)
+            doc_bytes.seek(0)
+            
+            st.success("✅ Internal links added successfully!")
+            
+            # Download button
+            st.download_button(
+                label="📄 Download Linked Article",
+                data=doc_bytes.getvalue(),
+                file_name="article_with_links.docx",
+                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            )
+            
+        except Exception as e:
+            st.error(f"❌ Error: {str(e)}")
