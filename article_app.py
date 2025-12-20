@@ -43,17 +43,17 @@ with tab1:
         
         col_a, col_b = st.columns(2)
         
-       with col_a:
+        with col_a:
             new_company_brief = st.file_uploader("Company Brief", type=['txt'], key="new_company")
             new_icp_brief = st.file_uploader("ICP Brief", type=['txt'], key="new_icp")
-
+        
         with col_b:
             new_guidelines = st.file_uploader("Writing Guidelines (optional)", type=['txt'], key="new_guidelines")
             new_sitemap_url = st.text_input("Sitemap URL (optional)", placeholder="https://example.com/sitemap.xml", key="new_sitemap")
         
         if st.button("➕ Create Client", type="primary"):
-    if new_client_name and new_company_brief and new_icp_brief:
-        st.session_state.clients[new_client_name] = {
+            if new_client_name and new_company_brief and new_icp_brief:
+                st.session_state.clients[new_client_name] = {
                     'company_brief': new_company_brief.read().decode('utf-8'),
                     'icp_brief': new_icp_brief.read().decode('utf-8'),
                     'guidelines': new_guidelines.read().decode('utf-8') if new_guidelines else "",
@@ -348,5 +348,6 @@ with tab3:
             
         except Exception as e:
             st.error(f"❌ Error: {str(e)}")
+
 
 
