@@ -54,11 +54,10 @@ with col_b:
         if st.button("➕ Create Client", type="primary"):
     if new_client_name and new_company_brief and new_icp_brief:
         st.session_state.clients[new_client_name] = {
-            'company_brief': new_company_brief.read().decode('utf-8'),
-            'icp_brief': new_icp_brief.read().decode('utf-8'),
-            'guidelines': new_guidelines.read().decode('utf-8') if new_guidelines else "",
-            'sitemap_url': new_sitemap_url.strip() if new_sitemap_url else ""
-        }
+                    'company_brief': new_company_brief.read().decode('utf-8'),
+                    'icp_brief': new_icp_brief.read().decode('utf-8'),
+                    'guidelines': new_guidelines.read().decode('utf-8') if new_guidelines else "",
+                    'sitemap_url': new_sitemap_url.strip() if new_sitemap_url else ""
                 }
                 st.success(f"✅ Client '{new_client_name}' created!")
                 st.rerun()
@@ -349,3 +348,4 @@ with tab3:
             
         except Exception as e:
             st.error(f"❌ Error: {str(e)}")
+
