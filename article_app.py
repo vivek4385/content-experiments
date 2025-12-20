@@ -1,5 +1,6 @@
 import streamlit as st
 from write_article import generate_article
+from add_internal_links import add_internal_links
 import json
 import time
 
@@ -27,7 +28,7 @@ except:
     st.stop()
 
 # Main tabs
-tab1, tab2 = st.tabs(["📁 Manage Clients", "📝 Generate Articles"])
+tab1, tab2, tab3 = st.tabs(["📁 Manage Clients", "📝 Generate Articles", "🔗 Add Internal Links"])
 
 # TAB 1: MANAGE CLIENTS
 with tab1:
@@ -43,18 +44,21 @@ with tab1:
         col_a, col_b = st.columns(2)
         
         with col_a:
-            new_company_brief = st.file_uploader("Company Brief", type=['txt'], key="new_company")
-            new_icp_brief = st.file_uploader("ICP Brief", type=['txt'], key="new_icp")
-        
-        with col_b:
-            new_guidelines = st.file_uploader("Writing Guidelines (optional)", type=['txt'], key="new_guidelines")
+    new_company_brief = st.file_uploader("Company Brief", type=['txt'], key="new_company")
+    new_icp_brief = st.file_uploader("ICP Brief", type=['txt'], key="new_icp")
+
+with col_b:
+    new_guidelines = st.file_uploader("Writing Guidelines (optional)", type=['txt'], key="new_guidelines")
+    new_sitemap_url = st.text_input("Sitemap URL (optional)", placeholder="https://example.com/sitemap.xml", key="new_sitemap")
         
         if st.button("➕ Create Client", type="primary"):
-            if new_client_name and new_company_brief and new_icp_brief:
-                st.session_state.clients[new_client_name] = {
-                    'company_brief': new_company_brief.read().decode('utf-8'),
-                    'icp_brief': new_icp_brief.read().decode('utf-8'),
-                    'guidelines': new_guidelines.read().decode('utf-8') if new_guidelines else ""
+    if new_client_name and new_company_brief and new_icp_brief:
+        st.session_state.clients[new_client_name] = {
+            'company_brief': new_company_brief.read().decode('utf-8'),
+            'icp_brief': new_icp_brief.read().decode('utf-8'),
+            'guidelines': new_guidelines.read().decode('utf-8') if new_guidelines else "",
+            'sitemap_url': new_sitemap_url.strip() if new_sitemap_url else ""
+        }
                 }
                 st.success(f"✅ Client '{new_client_name}' created!")
                 st.rerun()
@@ -265,3 +269,83 @@ with tab2:
                 st.sidebar.write(f"🔄 Row {row_id + 1} - Generating...")
             else:
                 st.sidebar.write(f"⏳ Row {row_id + 1} - Queued")
+
+# TAB 3: ADD INTERNAL LINKS
+with tab3:
+    st.header("Add Internal Links")
+    
+    # Client selector
+    if not st.session_state.clients:
+        st.warning("⚠️ No clients available. Go to 'Manage Clients' tab to create one.")
+        st.stop()
+    
+    link_client = st.selectbox(
+        "Select Client (for sitemap)",
+        options=list(st.session_state.clients.keys()),
+        key="link_client_select"
+    )
+    
+    client_data = st.session_state.clients[link_client]
+    
+    if not client_data.get('sitemap_url'):
+        st.warning(f"⚠️ Client '{link_client}' has no sitemap URL. Please edit the client to add one.")
+        st.stop()
+    
+    st.markdown(f"**Sitemap:** {client_data['sitemap_url']}")
+    st.markdown("---")
+    
+    # Input section
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        article_file = st.file_uploader("Upload Article", type=['md', 'txt'], help="The article to add links to")
+        num_links = st.number_input("Number of Links", min_value=1, max_value=20, value=5)
+    
+    with col2:
+        priority_urls = st.text_area(
+            "Priority URLs (optional)", 
+            placeholder="https://example.com/page1\nhttps://example.com/page2",
+            help="One URL per line. These will be prioritized if contextually relevant."
+        )
+    
+    # Generate button
+    if st.button("🔗 Add Internal Links", type="primary", disabled=not article_file):
+        
+        # Read article
+        article_text = article_file.read().decode('utf-8')
+        
+        # Progress tracking
+        status_text = st.empty()
+        
+        def update_progress(text):
+            status_text.text(text)
+        
+        # Add links
+        try:
+            doc = add_internal_links(
+                article_text=article_text,
+                sitemap_url=client_data['sitemap_url'],
+                num_links=num_links,
+                priority_urls=priority_urls,
+                api_key=api_key,
+                progress_callback=update_progress
+            )
+            
+            # Save to bytes
+            from io import BytesIO
+            doc_bytes = BytesIO()
+            doc.save(doc_bytes)
+            doc_bytes.seek(0)
+            
+            st.success("✅ Internal links added successfully!")
+            
+            # Download button
+            st.download_button(
+                label="📄 Download Linked Article",
+                data=doc_bytes.getvalue(),
+                file_name="article_with_links.docx",
+                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            )
+            
+        except Exception as e:
+            st.error(f"❌ Error: {str(e)}")
