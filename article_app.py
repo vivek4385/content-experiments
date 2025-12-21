@@ -447,11 +447,29 @@ with tab3:
             st.subheader(f"✏️ Editing Article (Row {row_id + 1})")
             
             # Editable article text
-            article_text = st.text_area(
-                "Article Content",
-                value=st.session_state.get(f'article_text_{row_id}', ''),
-                height=400,
-                key=f'article_editor_{row_id}'
+           with col1:
+    if st.button("✅ Accept", use_container_width=True):
+        # Replace selected text with refined version in article
+        row_id = st.session_state.ai_row_id
+        current_article = st.session_state.get(f'article_text_{row_id}', '')
+        
+        # Only replace if selected text is found
+        if st.session_state.ai_selected_text in current_article:
+            updated_article = current_article.replace(
+                st.session_state.ai_selected_text,
+                st.session_state.ai_preview,
+                1  # Replace only first occurrence
+            )
+            st.session_state[f'article_text_{row_id}'] = updated_article
+            st.success("✅ Changes applied to article!")
+        else:
+            st.warning("⚠️ Selected text not found in article. Copy the exact text you want to replace.")
+        
+        # Clear preview but keep selected text visible
+        st.session_state.ai_preview = ""
+        
+        time.sleep(1)
+        st.rerun()
             )
             
             # Update session state with edited text
@@ -636,3 +654,4 @@ Refined text:"""
                 st.sidebar.write(f"🔄 Row {row_id + 1} - Adding links...")
             else:
                 st.sidebar.write(f"⏳ Row {row_id + 1} - Queued")
+
