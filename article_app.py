@@ -28,7 +28,7 @@ except:
     st.stop()
 
 # Main tabs
-tab1, tab2, tab3, tab4, tab5 = st.tabs(["📁 Manage Clients", "📝 Generate Articles", "🔗 Add Internal Links", "✏️ AI Editor", "🔍 Brief Research"])
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["📁 Manage Clients", "📝 Generate Articles", "🔗 Add Internal Links", "✏️ AI Editor", "🔍 Brief Research", "Test"])
 
 # TAB 1: MANAGE CLIENTS
 with tab1:
@@ -652,3 +652,5 @@ with tab5:
     else:
         st.success(f"Found {len(st.session_state.clients)} clients")
 
+with tab6:
+    st.write("Test tab works")
