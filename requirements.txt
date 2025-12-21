@@ -2,3 +2,5 @@ streamlit
 anthropic
 python-docx
 requests
+google-search-results
+firecrawl-py
