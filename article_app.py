@@ -636,6 +636,3 @@ Refined text:"""
                 st.sidebar.write(f"🔄 Row {row_id + 1} - Adding links...")
             else:
                 st.sidebar.write(f"⏳ Row {row_id + 1} - Queued")
-            else:
-                st.sidebar.write(f"⏳ Row {row_id + 1} - Queued")
-
