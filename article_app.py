@@ -399,8 +399,7 @@ with tab3:
                         if article_file:
                             article_text = article_file.read().decode('utf-8')
                             # Store in session for editing
-                            if f'article_text_{row_id}' not in st.session_state:
-                                st.session_state[f'article_text_{row_id}'] = article_text
+                            st.session_state[f'article_text_{row_id}'] = article_text
                         st.rerun()
                     
                     # Add links button
@@ -446,16 +445,16 @@ with tab3:
             st.markdown("---")
             st.subheader(f"✏️ Editing Article (Row {row_id + 1})")
             
-        # Editable article text
-            article_text = st.text_area(
-                "Article Content",
-                value=st.session_state.get(f'article_text_{row_id}', ''),
-                height=400,
-                key=f'article_editor_{row_id}'
-            )
+            # Initialize if not exists
+            if f'article_text_{row_id}' not in st.session_state:
+                st.session_state[f'article_text_{row_id}'] = ''
             
-            # Update session state with edited text
-            st.session_state[f'article_text_{row_id}'] = article_text
+            # Text area bound directly to session state via key
+            st.text_area(
+                "Article Content",
+                height=400,
+                key=f'article_text_{row_id}'
+            )
             
             col1, col2 = st.columns([1, 5])
             with col1:
@@ -553,15 +552,16 @@ Refined text:"""
                             updated_article = current_article.replace(
                                 st.session_state.ai_selected_text,
                                 st.session_state.ai_preview,
-                                1  # Replace only first occurrence
+                                1
                             )
                             st.session_state[f'article_text_{row_id}'] = updated_article
                             st.success("✅ Changes applied to article!")
                         else:
                             st.warning("⚠️ Selected text not found in article. Copy the exact text you want to replace.")
                         
-                        # Clear preview but keep selected text visible
+                        # Clear preview
                         st.session_state.ai_preview = ""
+                        st.session_state.ai_selected_text = ""
                         
                         time.sleep(1)
                         st.rerun()
@@ -571,7 +571,7 @@ Refined text:"""
                         st.session_state.ai_preview = ""
                         st.rerun()
     
-    # Process queue (same as before)
+    # Process queue
     if st.session_state.link_queue:
         current_row_id = st.session_state.link_queue[0]
         
@@ -643,5 +643,3 @@ Refined text:"""
                 st.sidebar.write(f"🔄 Row {row_id + 1} - Adding links...")
             else:
                 st.sidebar.write(f"⏳ Row {row_id + 1} - Queued")
-
-
