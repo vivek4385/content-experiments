@@ -400,6 +400,7 @@ with tab3:
                             article_text = article_file.read().decode('utf-8')
                             # Store in session for editing
                             st.session_state[f'article_text_{row_id}'] = article_text
+                            st.session_state[f'article_display_{row_id}'] = article_text
                         st.rerun()
                     
                     # Add links button
@@ -445,23 +446,36 @@ with tab3:
             st.markdown("---")
             st.subheader(f"✏️ Editing Article (Row {row_id + 1})")
             
-            # Initialize if not exists
-            if f'article_text_{row_id}' not in st.session_state:
-                st.session_state[f'article_text_{row_id}'] = ''
+            # Use separate key for display vs storage
+            display_key = f'article_display_{row_id}'
+            storage_key = f'article_text_{row_id}'
             
-            # Text area bound directly to session state via key
-            st.text_area(
+            # Initialize display text from storage
+            if display_key not in st.session_state:
+                st.session_state[display_key] = st.session_state.get(storage_key, '')
+            
+            # Text area for editing
+            article_text = st.text_area(
                 "Article Content",
+                value=st.session_state[display_key],
                 height=400,
-                key=f'article_text_{row_id}'
+                key=f'editor_{row_id}'
             )
+            
+            # Update display state when user types
+            st.session_state[display_key] = article_text
             
             col1, col2 = st.columns([1, 5])
             with col1:
                 if st.button("💾 Save & Close"):
+                    # Copy display text to storage
+                    st.session_state[storage_key] = st.session_state[display_key]
+                    # Clear editor state
                     st.session_state.ai_row_id = None
                     st.session_state.ai_selected_text = ""
                     st.session_state.ai_preview = ""
+                    if display_key in st.session_state:
+                        del st.session_state[display_key]
                     st.rerun()
     
     # AI Chat Sidebar
@@ -543,9 +557,10 @@ Refined text:"""
                 col1, col2 = st.columns(2)
                 with col1:
                     if st.button("✅ Accept", use_container_width=True):
-                        # Replace selected text with refined version in article
+                        # Replace selected text with refined version
                         row_id = st.session_state.ai_row_id
-                        current_article = st.session_state.get(f'article_text_{row_id}', '')
+                        display_key = f'article_display_{row_id}'
+                        current_article = st.session_state.get(display_key, '')
                         
                         # Only replace if selected text is found
                         if st.session_state.ai_selected_text in current_article:
@@ -554,10 +569,10 @@ Refined text:"""
                                 st.session_state.ai_preview,
                                 1
                             )
-                            st.session_state[f'article_text_{row_id}'] = updated_article
-                            st.success("✅ Changes applied to article!")
+                            st.session_state[display_key] = updated_article
+                            st.success("✅ Changes applied!")
                         else:
-                            st.warning("⚠️ Selected text not found in article. Copy the exact text you want to replace.")
+                            st.warning("⚠️ Selected text not found. Copy exact text.")
                         
                         # Clear preview
                         st.session_state.ai_preview = ""
@@ -643,3 +658,4 @@ Refined text:"""
                 st.sidebar.write(f"🔄 Row {row_id + 1} - Adding links...")
             else:
                 st.sidebar.write(f"⏳ Row {row_id + 1} - Queued")
+
