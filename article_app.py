@@ -632,25 +632,8 @@ st.write(f"DEBUG: About to render tab5, tabs defined: {tab1}, {tab2}, {tab3}, {t
 
 # TAB 5: BRIEF RESEARCH
 with tab5:
-    st.header("🔍 Brief Research")
-    st.markdown("Research topics, generate article structure, and create writing guidelines")
-    
-    st.write("Tab 5 is working!")
-    
-    # Test secrets
-    try:
-        serpapi_key = st.secrets.get("SERPAPI_KEY", "NOT_FOUND")
-        firecrawl_key = st.secrets.get("FIRECRAWL_KEY", "NOT_FOUND")
-        st.write(f"SerpAPI Key: {'Found' if serpapi_key != 'NOT_FOUND' else 'Missing'}")
-        st.write(f"FireCrawl Key: {'Found' if firecrawl_key != 'NOT_FOUND' else 'Missing'}")
-    except Exception as e:
-        st.error(f"Error checking secrets: {e}")
-    
-    # Test client check
-    if not st.session_state.clients:
-        st.warning("No clients - create one first")
-    else:
-        st.success(f"Found {len(st.session_state.clients)} clients")
+    st.write("Hello from tab 5")
 
 with tab6:
     st.write("Test tab works")
+
