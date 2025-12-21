@@ -557,6 +557,7 @@ with tab5:
                 firecrawl = FirecrawlApp(api_key=firecrawl_key)
                 
                 all_headers = []
+                scrape_errors = []
                 
                 for idx, url in enumerate(urls, 1):
                     try:
@@ -564,6 +565,15 @@ with tab5:
                         result = firecrawl.scrape_url(url)
                         markdown = result.get('markdown', '')
                         
+                        if not markdown:
+                            scrape_errors.append(f"{url}: No markdown content returned")
+                            st.warning(f"No content from {url[:50]}")
+                            continue
+                        
+                        # Debug: show first 200 chars of markdown
+                        st.text(f"Got {len(markdown)} chars. Preview: {markdown[:200]}")
+                
+                                
                         # Extract H2 and H3 headers
                         lines = markdown.split('\n')
                         for line in lines:
@@ -579,7 +589,16 @@ with tab5:
                         st.warning(f"Failed to scrape {url}: {str(e)}")
                         continue
                 
-                st.success(f"Extracted {len(all_headers)} total headers")
+                if scrape_errors:
+                    st.warning(f"Failed to scrape {len(scrape_errors)} URLs:")
+                    for err in scrape_errors:
+                        st.text(f"- {err}")
+                
+                if not all_headers:
+                    st.error("No headers extracted from any articles. FireCrawl may be failing or articles have no H2/H3 headers.")
+                    st.stop()
+                
+                st.success(f"Extracted {len(all_headers)} total headers from {len(urls)} articles")                
                 
                 # Step 3: Deduplicate with Claude
                 st.info("Deduplicating headers with AI...")
@@ -936,6 +955,7 @@ Updated article:"""
             st.session_state.editor_article = ""
             st.session_state.editor_chat_history = []
             st.rerun()
+
 
 
 
