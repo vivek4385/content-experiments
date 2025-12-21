@@ -28,7 +28,7 @@ except:
     st.stop()
 
 # Main tabs
-tab1, tab2, tab3, tab4 = st.tabs(["📁 Manage Clients", "📝 Generate Articles", "🔗 Add Internal Links", "✏️ AI Editor"])
+tab1, tab2, tab3, tab4, tab5 = st.tabs(["📁 Manage Clients", "📝 Generate Articles", "🔗 Add Internal Links", "✏️ AI Editor", "🔍 Brief Research"])
 
 # TAB 1: MANAGE CLIENTS
 with tab1:
@@ -627,3 +627,4 @@ Updated article:"""
             st.session_state.editor_article = ""
             st.session_state.editor_chat_history = []
             st.rerun()
+
