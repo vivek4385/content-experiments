@@ -398,9 +398,8 @@ with tab3:
                         st.session_state.ai_row_id = row_id
                         if article_file:
                             article_text = article_file.read().decode('utf-8')
-                            # Store in session for editing
-                            st.session_state[f'article_text_{row_id}'] = article_text
-                            st.session_state[f'article_display_{row_id}'] = article_text
+                            # Initialize current version (this is what gets edited iteratively)
+                            st.session_state[f'article_current_{row_id}'] = article_text
                         st.rerun()
                     
                     # Add links button
@@ -413,8 +412,11 @@ with tab3:
                     ):
                         # Add to queue
                         st.session_state.link_queue.append(row_id)
-                        # Store data
-                        article_text = article_file.read().decode('utf-8') if article_file else st.session_state.get(f'article_text_{row_id}', '')
+                        # Use current edited version if available, otherwise use uploaded file
+                        article_text = st.session_state.get(f'article_current_{row_id}', '')
+                        if not article_text and article_file:
+                            article_text = article_file.read().decode('utf-8')
+                        
                         st.session_state[f'link_data_{row_id}'] = {
                             'title': title,
                             'article_text': article_text,
@@ -446,36 +448,24 @@ with tab3:
             st.markdown("---")
             st.subheader(f"✏️ Editing Article (Row {row_id + 1})")
             
-            # Use separate key for display vs storage
-            display_key = f'article_display_{row_id}'
-            storage_key = f'article_text_{row_id}'
+            # Get current version (with all edits applied so far)
+            current_article = st.session_state.get(f'article_current_{row_id}', '')
             
-            # Initialize display text from storage
-            if display_key not in st.session_state:
-                st.session_state[display_key] = st.session_state.get(storage_key, '')
-            
-            # Text area for editing
-            article_text = st.text_area(
-                "Article Content",
-                value=st.session_state[display_key],
+            # Display current article (read-only for now to avoid conflicts)
+            st.text_area(
+                "Current Article (copy text from here to edit with AI)",
+                value=current_article,
                 height=400,
-                key=f'editor_{row_id}'
+                key=f'article_viewer_{row_id}',
+                disabled=True
             )
-            
-            # Update display state when user types
-            st.session_state[display_key] = article_text
             
             col1, col2 = st.columns([1, 5])
             with col1:
                 if st.button("💾 Save & Close"):
-                    # Copy display text to storage
-                    st.session_state[storage_key] = st.session_state[display_key]
-                    # Clear editor state
                     st.session_state.ai_row_id = None
                     st.session_state.ai_selected_text = ""
                     st.session_state.ai_preview = ""
-                    if display_key in st.session_state:
-                        del st.session_state[display_key]
                     st.rerun()
     
     # AI Chat Sidebar
@@ -486,15 +476,13 @@ with tab3:
             st.info("👈 Click 'Edit' on a row to start editing with AI")
         else:
             # Selected text input
-            selected_text = st.text_area(
+            st.text_area(
                 "Selected Text (paste here)",
                 value=st.session_state.ai_selected_text,
                 height=100,
                 key="ai_selected_input",
                 placeholder="Copy text from the article and paste here..."
             )
-            
-            st.session_state.ai_selected_text = selected_text
             
             # Chat input
             instruction = st.text_input(
@@ -503,7 +491,7 @@ with tab3:
                 key="ai_instruction"
             )
             
-            if st.button("✨ Refine", disabled=not selected_text or not instruction):
+            if st.button("✨ Refine", disabled=not st.session_state.ai_selected_text or not instruction):
                 # Call Claude to refine
                 row_id = st.session_state.ai_row_id
                 
@@ -515,7 +503,7 @@ with tab3:
                         prompt = f"""You are helping refine article content.
 
 SELECTED TEXT TO REFINE:
-{selected_text}
+{st.session_state.ai_selected_text}
 
 USER INSTRUCTION:
 {instruction}
@@ -557,10 +545,9 @@ Refined text:"""
                 col1, col2 = st.columns(2)
                 with col1:
                     if st.button("✅ Accept", use_container_width=True):
-                        # Replace selected text with refined version
+                        # Replace selected text with refined version in current article
                         row_id = st.session_state.ai_row_id
-                        display_key = f'article_display_{row_id}'
-                        current_article = st.session_state.get(display_key, '')
+                        current_article = st.session_state.get(f'article_current_{row_id}', '')
                         
                         # Only replace if selected text is found
                         if st.session_state.ai_selected_text in current_article:
@@ -569,17 +556,18 @@ Refined text:"""
                                 st.session_state.ai_preview,
                                 1
                             )
-                            st.session_state[display_key] = updated_article
-                            st.success("✅ Changes applied!")
+                            # Update current version with the change
+                            st.session_state[f'article_current_{row_id}'] = updated_article
+                            
+                            # Clear state
+                            st.session_state.ai_preview = ""
+                            st.session_state.ai_selected_text = ""
+                            
+                            st.success("✅ Changes applied! Article updated.")
+                            time.sleep(1)
+                            st.rerun()
                         else:
-                            st.warning("⚠️ Selected text not found. Copy exact text.")
-                        
-                        # Clear preview
-                        st.session_state.ai_preview = ""
-                        st.session_state.ai_selected_text = ""
-                        
-                        time.sleep(1)
-                        st.rerun()
+                            st.warning("⚠️ Selected text not found. Copy exact text from article.")
                 
                 with col2:
                     if st.button("✗ Reject", use_container_width=True):
@@ -658,4 +646,3 @@ Refined text:"""
                 st.sidebar.write(f"🔄 Row {row_id + 1} - Adding links...")
             else:
                 st.sidebar.write(f"⏳ Row {row_id + 1} - Queued")
-
