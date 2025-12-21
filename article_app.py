@@ -627,4 +627,312 @@ Updated article:"""
             st.session_state.editor_article = ""
             st.session_state.editor_chat_history = []
             st.rerun()
+# TAB 5: BRIEF RESEARCH
+with tab5:
+    st.header("🔍 Brief Research")
+    st.markdown("Research topics, generate article structure, and create writing guidelines")
+    
+    # Get API keys from secrets
+    try:
+        serpapi_key = st.secrets["SERPAPI_KEY"]
+        firecrawl_key = st.secrets["FIRECRAWL_KEY"]
+    except:
+        st.error("⚠️ API keys not configured. Add SERPAPI_KEY and FIRECRAWL_KEY to Streamlit secrets.")
+        st.stop()
+    
+    # Initialize research state
+    if 'research_unique_headers' not in st.session_state:
+        st.session_state.research_unique_headers = ""
+    if 'research_brief_structure' not in st.session_state:
+        st.session_state.research_brief_structure = ""
+    
+    # Client selector
+    if not st.session_state.clients:
+        st.warning("⚠️ No clients available. Create a client first for ICP/company context.")
+        st.stop()
+    
+    research_client = st.selectbox(
+        "Select Client",
+        options=list(st.session_state.clients.keys()),
+        key="research_client_select"
+    )
+    
+    research_client_data = st.session_state.clients[research_client]
+    
+    st.markdown("---")
+    
+    # SECTION 1: RESEARCH TOPIC
+    st.subheader("Step 1: Research Topic")
+    
+    keyword = st.text_input("Enter keyword/topic", placeholder="e.g., payment automation for B2B")
+    
+    if st.button("🔍 Research Topic", disabled=not keyword):
+        with st.spinner("Researching topic..."):
+            try:
+                from serpapi import GoogleSearch
+                from firecrawl import FirecrawlApp
+                import re
+                from anthropic import Anthropic
+                
+                # Step 1: Search Google
+                st.info("Searching Google for top results...")
+                params = {
+                    "q": keyword,
+                    "num": 10,
+                    "api_key": serpapi_key
+                }
+                
+                search = GoogleSearch(params)
+                results = search.get_dict()
+                
+                urls = [r['link'] for r in results.get('organic_results', [])][:10]
+                people_also_ask = [q.get('question', '') for q in results.get('related_questions', [])]
+                
+                st.success(f"Found {len(urls)} URLs and {len(people_also_ask)} PAA questions")
+                
+                # Step 2: Scrape each URL and extract headers
+                st.info("Scraping articles and extracting headers...")
+                firecrawl = FirecrawlApp(api_key=firecrawl_key)
+                
+                all_headers = []
+                
+                for idx, url in enumerate(urls, 1):
+                    try:
+                        st.text(f"Scraping {idx}/{len(urls)}: {url[:50]}...")
+                        result = firecrawl.scrape_url(url)
+                        markdown = result.get('markdown', '')
+                        
+                        # Extract H2 and H3 headers
+                        lines = markdown.split('\n')
+                        for line in lines:
+                            line = line.strip()
+                            if line.startswith('## ') and not line.startswith('### '):
+                                h2_title = line.replace('## ', '').strip()
+                                all_headers.append(f"## {h2_title}")
+                            elif line.startswith('### '):
+                                h3_title = line.replace('### ', '').strip()
+                                all_headers.append(f"### {h3_title}")
+                        
+                    except Exception as e:
+                        st.warning(f"Failed to scrape {url}: {str(e)}")
+                        continue
+                
+                st.success(f"Extracted {len(all_headers)} total headers")
+                
+                # Step 3: Deduplicate with Claude
+                st.info("Deduplicating headers with AI...")
+                client = Anthropic(api_key=api_key)
+                
+                headers_text = '\n'.join(all_headers)
+                paa_text = '\n'.join([f"- {q}" for q in people_also_ask])
+                
+                dedup_prompt = f"""You are analyzing article headers from competitor content.
+
+ALL HEADERS FOUND:
+{headers_text}
+
+PEOPLE ALSO ASK QUESTIONS:
+{paa_text}
+
+Task:
+1. Deduplicate similar/identical headers (merge synonyms and similar concepts)
+2. Remove exact duplicates
+3. Create a unique, consolidated list
+4. Include relevant PAA questions as potential sections
+5. Organize logically with H2s and H3s
+
+Return ONLY the unique list of headers in markdown format (using ## for H2 and ### for H3). No explanations.
+
+Unique headers:"""
+                
+                message = client.messages.create(
+                    model="claude-sonnet-4-20250514",
+                    max_tokens=4000,
+                    messages=[{"role": "user", "content": dedup_prompt}]
+                )
+                
+                unique_headers = message.content[0].text.strip()
+                st.session_state.research_unique_headers = unique_headers
+                
+                st.success("✅ Research complete!")
+                st.rerun()
+                
+            except Exception as e:
+                st.error(f"Error during research: {str(e)}")
+    
+    # Display unique headers if available
+    if st.session_state.research_unique_headers:
+        st.markdown("### 📋 Unique Headers Found")
+        with st.expander("View Headers", expanded=True):
+            st.markdown(st.session_state.research_unique_headers)
+        
+        st.download_button(
+            "📄 Download Unique Headers",
+            data=st.session_state.research_unique_headers,
+            file_name=f"{keyword.replace(' ', '_')}_headers.md",
+            mime="text/markdown"
+        )
+    
+    st.markdown("---")
+    
+    # SECTION 2: GENERATE BRIEF STRUCTURE
+    st.subheader("Step 2: Generate Article Brief Structure")
+    st.caption("Refines headers for ICP/company fit. Auto-populated from Step 1, or paste edited version.")
+    
+    # Auto-populate or allow manual input
+    structure_input = st.text_area(
+        "Headers to refine",
+        value=st.session_state.research_unique_headers,
+        height=300,
+        key="structure_input",
+        placeholder="Paste H2/H3 structure here..."
+    )
+    
+    if st.button("📝 Generate Brief Structure", disabled=not structure_input):
+        with st.spinner("Refining structure for ICP/company fit..."):
+            try:
+                from anthropic import Anthropic
+                client = Anthropic(api_key=api_key)
+                
+                refine_prompt = f"""You are refining an article outline for a specific audience and company.
+
+CURRENT HEADERS:
+{structure_input}
+
+TARGET AUDIENCE:
+{research_client_data['icp_brief']}
+
+COMPANY CONTEXT:
+{research_client_data['company_brief']}
+
+Task:
+1. Evaluate each section for relevance to the ICP
+2. Rewrite headers to use ICP-specific language and pain points
+3. Remove sections irrelevant to this audience
+4. Add sections competitors missed but the ICP needs
+5. Organize in logical order for this audience
+6. Maintain H2/H3 hierarchy
+
+Return ONLY the refined outline in markdown format (## for H2, ### for H3). No explanations.
+
+Refined outline:"""
+                
+                message = client.messages.create(
+                    model="claude-sonnet-4-20250514",
+                    max_tokens=4000,
+                    messages=[{"role": "user", "content": refine_prompt}]
+                )
+                
+                brief_structure = message.content[0].text.strip()
+                st.session_state.research_brief_structure = brief_structure
+                
+                st.success("✅ Brief structure generated!")
+                st.rerun()
+                
+            except Exception as e:
+                st.error(f"Error generating structure: {str(e)}")
+    
+    # Display brief structure if available
+    if st.session_state.research_brief_structure:
+        st.markdown("### 📐 Article Brief Structure")
+        with st.expander("View Structure", expanded=True):
+            st.markdown(st.session_state.research_brief_structure)
+        
+        st.download_button(
+            "📄 Download Brief Structure",
+            data=st.session_state.research_brief_structure,
+            file_name=f"{keyword.replace(' ', '_') if keyword else 'article'}_structure.md",
+            mime="text/markdown"
+        )
+        
+        st.info("💡 You can now edit this structure in the AI Editor tab, then come back here to generate writing guidelines.")
+    
+    st.markdown("---")
+    
+    # SECTION 3: GENERATE WRITING GUIDELINES
+    st.subheader("Step 3: Generate Writing Guidelines")
+    st.caption("Paste your final H2/H3 structure (after editing in AI Editor if needed)")
+    
+    final_structure = st.text_area(
+        "Final article structure",
+        height=300,
+        key="final_structure_input",
+        placeholder="Paste final H2/H3 structure here..."
+    )
+    
+    guidelines_keyword = st.text_input("Primary keyword (for SEO)", placeholder="e.g., payment automation", key="guidelines_keyword")
+    
+    if st.button("✍️ Generate Writing Guidelines", disabled=not final_structure or not guidelines_keyword):
+        with st.spinner("Generating writing guidelines..."):
+            try:
+                from anthropic import Anthropic
+                client = Anthropic(api_key=api_key)
+                
+                guidelines_prompt = f"""Generate concise writing guidelines for each section of this outline.
+
+OUTLINE:
+{final_structure}
+
+ICP CONTEXT:
+{research_client_data['icp_brief']}
+
+COMPANY CONTEXT:
+{research_client_data['company_brief']}
+
+PRIMARY KEYWORD: {guidelines_keyword}
+
+REQUIREMENTS:
+1. Maximum 3 sentences per guideline
+2. Introduction must focus on primary ICP pain point
+3. For H2 sections that are definitional (What is X, Understanding Y, technical terms) → first sentence must clearly define the topic
+4. For H2 sections that are benefit/how-to/challenge-focused → first sentence should hook with pain point or transition naturally (NO definition needed)
+5. Each H2 guideline should preview what the H3 subsections will cover
+6. Include specific pain points, metrics, or language from ICP context
+7. Note where to naturally place keywords for SEO
+8. Keep guidelines actionable and specific
+
+FORMAT:
+## [Section Header]
+**Writing Guidelines:** [3 sentences maximum]
+
+### [Subsection Header]
+**Writing Guidelines:** [3 sentences maximum]
+
+Generate guidelines now:"""
+                
+                message = client.messages.create(
+                    model="claude-sonnet-4-20250514",
+                    max_tokens=8000,
+                    messages=[{"role": "user", "content": guidelines_prompt}]
+                )
+                
+                guidelines = message.content[0].text.strip()
+                
+                # Combine structure + guidelines into final brief
+                final_brief = f"""# Article Brief: {guidelines_keyword}
+
+## Article Structure with Writing Guidelines
+
+{guidelines}
+"""
+                
+                st.success("✅ Writing guidelines generated!")
+                
+                # Display
+                st.markdown("### 📝 Complete Article Brief")
+                with st.expander("View Brief", expanded=True):
+                    st.markdown(final_brief)
+                
+                st.download_button(
+                    "📄 Download Complete Brief",
+                    data=final_brief,
+                    file_name=f"{guidelines_keyword.replace(' ', '_')}_brief.md",
+                    mime="text/markdown",
+                    type="primary"
+                )
+                
+                st.success("✅ Brief is ready! Use this in the 'Generate Articles' tab.")
+                
+            except Exception as e:
+                st.error(f"Error generating guidelines: {str(e)}")
 
