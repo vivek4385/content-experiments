@@ -489,6 +489,10 @@ with tab3:
             else:
                 st.sidebar.write(f"⏳ Row {row_id + 1} - Queued")
 
+# TAB 5: BRIEF RESEARCH
+with tab5:
+    st.write("Hello from tab 5")
+    
 # TAB 4: AI EDITOR
 with tab4:
     st.header("✏️ AI Editor")
@@ -628,11 +632,9 @@ Updated article:"""
             st.session_state.editor_chat_history = []
             st.rerun()
 
-# TAB 5: BRIEF RESEARCH
-with tab5:
-    st.write("Hello from tab 5")
 
 with tab6:
     st.write("Test tab works")
+
 
 
