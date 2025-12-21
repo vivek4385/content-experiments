@@ -562,7 +562,7 @@ with tab5:
                 for idx, url in enumerate(urls, 1):
                     try:
                         st.text(f"Scraping {idx}/{len(urls)}: {url[:50]}...")
-                        result = firecrawl.scrape_url(url)
+                        result = firecrawl.scrape(url)
                         markdown = result.get('markdown', '')
                         
                         if not markdown:
@@ -955,6 +955,7 @@ Updated article:"""
             st.session_state.editor_article = ""
             st.session_state.editor_chat_history = []
             st.rerun()
+
 
 
 
