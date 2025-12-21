@@ -645,7 +645,7 @@ Unique headers:"""
     if st.session_state.research_unique_headers:
         st.markdown("### 📋 Unique Headers Found")
         with st.expander("View Headers", expanded=True):
-            st.markdown(st.session_state.research_unique_headers)
+            st.code(st.session_state.research_unique_headers, language="markdown")
         
         st.download_button(
             "📄 Download Unique Headers",
@@ -717,7 +717,7 @@ Refined outline:"""
     if st.session_state.research_brief_structure:
         st.markdown("### 📐 Article Brief Structure")
         with st.expander("View Structure", expanded=True):
-            st.markdown(st.session_state.research_brief_structure)
+            st.code(st.session_state.research_brief_structure, language="markdown")
         
         st.download_button(
             "📄 Download Brief Structure",
@@ -955,6 +955,7 @@ Updated article:"""
             st.session_state.editor_article = ""
             st.session_state.editor_chat_history = []
             st.rerun()
+
 
 
 
