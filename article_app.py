@@ -453,11 +453,11 @@ with tab3:
             
             # Display current article (read-only for now to avoid conflicts)
             st.text_area(
-                "Current Article (copy text from here to edit with AI)",
+                "Current Article",
                 value=current_article,
                 height=400,
                 key=f'article_viewer_{row_id}',
-                disabled=True
+                help="Copy text from here to refine with AI. This updates after each accepted change."
             )
             
             col1, col2 = st.columns([1, 5])
@@ -476,13 +476,15 @@ with tab3:
             st.info("👈 Click 'Edit' on a row to start editing with AI")
         else:
             # Selected text input
-            st.text_area(
+            selected_text = st.text_area(
                 "Selected Text (paste here)",
-                value=st.session_state.ai_selected_text,
                 height=100,
                 key="ai_selected_input",
                 placeholder="Copy text from the article and paste here..."
             )
+            
+            # Update session state
+            st.session_state.ai_selected_text = selected_text
             
             # Chat input
             instruction = st.text_input(
@@ -491,7 +493,7 @@ with tab3:
                 key="ai_instruction"
             )
             
-            if st.button("✨ Refine", disabled=not st.session_state.ai_selected_text or not instruction):
+            if st.button("✨ Refine", disabled=not selected_text or not instruction):
                 # Call Claude to refine
                 row_id = st.session_state.ai_row_id
                 
@@ -646,3 +648,4 @@ Refined text:"""
                 st.sidebar.write(f"🔄 Row {row_id + 1} - Adding links...")
             else:
                 st.sidebar.write(f"⏳ Row {row_id + 1} - Queued")
+
