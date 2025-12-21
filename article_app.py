@@ -28,7 +28,7 @@ except:
     st.stop()
 
 # Main tabs
-tab1, tab2, tab3 = st.tabs(["📁 Manage Clients", "📝 Generate Articles", "🔗 Add Internal Links"])
+tab1, tab2, tab3, tab4 = st.tabs(["📁 Manage Clients", "📝 Generate Articles", "🔗 Add Internal Links", "✏️ AI Editor"])
 
 # TAB 1: MANAGE CLIENTS
 with tab1:
@@ -304,277 +304,117 @@ with tab3:
     if 'link_results' not in st.session_state:
         st.session_state.link_results = {}
     
-    # Initialize AI chat state
-    if 'ai_selected_text' not in st.session_state:
-        st.session_state.ai_selected_text = ""
-    if 'ai_preview' not in st.session_state:
-        st.session_state.ai_preview = ""
-    if 'ai_row_id' not in st.session_state:
-        st.session_state.ai_row_id = None
+    # Add row button
+    col1, col2 = st.columns([6, 1])
+    with col2:
+        if st.button("➕ Add Row", key="add_link_row"):
+            st.session_state.link_rows.append({'id': st.session_state.next_link_id})
+            st.session_state.next_link_id += 1
+            st.rerun()
     
-    # Main layout: content on left, AI chat on right
-    col_main, col_chat = st.columns([2, 1])
+    # Header row
+    cols = st.columns([2, 2, 1.5, 1.5, 1.5, 2])
+    cols[0].markdown("**Title**")
+    cols[1].markdown("**Article File**")
+    cols[2].markdown("**# Links**")
+    cols[3].markdown("**Priority URLs**")
+    cols[4].markdown("**Action**")
+    cols[5].markdown("**Status**")
     
-    with col_main:
-        # Add row button
-        col1, col2 = st.columns([6, 1])
-        with col2:
-            if st.button("➕ Add Row", key="add_link_row"):
-                st.session_state.link_rows.append({'id': st.session_state.next_link_id})
-                st.session_state.next_link_id += 1
-                st.rerun()
+    # Render each row
+    for idx, row in enumerate(st.session_state.link_rows):
+        row_id = row['id']
         
-        # Header row
         cols = st.columns([2, 2, 1.5, 1.5, 1.5, 2])
-        cols[0].markdown("**Title**")
-        cols[1].markdown("**Article File**")
-        cols[2].markdown("**# Links**")
-        cols[3].markdown("**Priority URLs**")
-        cols[4].markdown("**Action**")
-        cols[5].markdown("**Status**")
         
-        # Render each row
-        for idx, row in enumerate(st.session_state.link_rows):
-            row_id = row['id']
-            
-            cols = st.columns([2, 2, 1.5, 1.5, 1.5, 2])
-            
-            # Title input
-            title = cols[0].text_input(
-                "Title",
-                key=f"link_title_{row_id}",
-                label_visibility="collapsed",
-                placeholder="Article title..."
-            )
-            
-            # Article upload
-            article_file = cols[1].file_uploader(
-                "Article",
-                type=['md', 'txt'],
-                key=f"link_article_{row_id}",
-                label_visibility="collapsed"
-            )
-            
-            # Number of links
-            num_links = cols[2].number_input(
-                "Links",
-                min_value=1,
-                max_value=20,
-                value=5,
-                key=f"link_num_{row_id}",
-                label_visibility="collapsed"
-            )
-            
-            # Priority URLs
-            priority_urls = cols[3].text_area(
-                "Priority URLs",
-                key=f"link_priority_{row_id}",
-                label_visibility="collapsed",
-                placeholder="URLs (optional)",
-                height=100
-            )
-            
-            # Action buttons
-            with cols[4]:
-                # Check if this row has results
-                if row_id in st.session_state.link_results:
-                    result = st.session_state.link_results[row_id]
-                    if result['status'] == 'complete':
-                        st.success("✅ Done")
-                    elif result['status'] == 'error':
-                        st.error("❌ Error")
-                # Check if in queue
-                elif row_id in st.session_state.link_queue:
-                    queue_pos = st.session_state.link_queue.index(row_id) + 1
-                    if queue_pos == 1:
-                        st.info("⏳ Running")
-                    else:
-                        st.warning(f"Queue #{queue_pos}")
-                # Show buttons
+        # Title input
+        title = cols[0].text_input(
+            "Title",
+            key=f"link_title_{row_id}",
+            label_visibility="collapsed",
+            placeholder="Article title..."
+        )
+        
+        # Article upload
+        article_file = cols[1].file_uploader(
+            "Article",
+            type=['md', 'txt'],
+            key=f"link_article_{row_id}",
+            label_visibility="collapsed"
+        )
+        
+        # Number of links
+        num_links = cols[2].number_input(
+            "Links",
+            min_value=1,
+            max_value=20,
+            value=5,
+            key=f"link_num_{row_id}",
+            label_visibility="collapsed"
+        )
+        
+        # Priority URLs
+        priority_urls = cols[3].text_area(
+            "Priority URLs",
+            key=f"link_priority_{row_id}",
+            label_visibility="collapsed",
+            placeholder="URLs (optional)",
+            height=100
+        )
+        
+        # Action button
+        with cols[4]:
+            # Check if this row has results
+            if row_id in st.session_state.link_results:
+                result = st.session_state.link_results[row_id]
+                if result['status'] == 'complete':
+                    st.success("✅ Done")
+                elif result['status'] == 'error':
+                    st.error("❌ Error")
+            # Check if in queue
+            elif row_id in st.session_state.link_queue:
+                queue_pos = st.session_state.link_queue.index(row_id) + 1
+                if queue_pos == 1:
+                    st.info("⏳ Running")
                 else:
-                    # Edit with AI button
-                    if st.button("✨ Edit", key=f"edit_{row_id}", use_container_width=True, disabled=not article_file):
-                        # Load article for editing
-                        st.session_state.ai_row_id = row_id
-                        if article_file:
-                            article_text = article_file.read().decode('utf-8')
-                            # Initialize current version (this is what gets edited iteratively)
-                            st.session_state[f'article_current_{row_id}'] = article_text
-                        st.rerun()
-                    
-                    # Add links button
-                    files_ready = article_file and link_client
-                    if st.button(
-                        "🔗 Add Links",
-                        key=f"link_gen_{row_id}",
-                        disabled=not files_ready,
-                        use_container_width=True
-                    ):
-                        # Add to queue
-                        st.session_state.link_queue.append(row_id)
-                        # Use current edited version if available, otherwise use uploaded file
-                        article_text = st.session_state.get(f'article_current_{row_id}', '')
-                        if not article_text and article_file:
-                            article_text = article_file.read().decode('utf-8')
-                        
-                        st.session_state[f'link_data_{row_id}'] = {
-                            'title': title,
-                            'article_text': article_text,
-                            'num_links': num_links,
-                            'priority_urls': priority_urls,
-                            'sitemap_url': client_data['sitemap_url']
-                        }
-                        st.rerun()
-            
-            # Status/Download column
-            with cols[5]:
-                if row_id in st.session_state.link_results:
-                    result = st.session_state.link_results[row_id]
-                    if result['status'] == 'complete':
-                        st.download_button(
-                            "📄 Download",
-                            data=result['doc_bytes'],
-                            file_name=f"{title or 'article'}_linked_{row_id}.docx",
-                            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                            key=f"link_download_{row_id}",
-                            use_container_width=True
-                        )
-                    elif result['status'] == 'error':
-                        st.caption(result['error'][:50] + "...")
-        
-        # Show article editor if a row is selected for editing
-        if st.session_state.ai_row_id is not None:
-            row_id = st.session_state.ai_row_id
-            st.markdown("---")
-            st.subheader(f"✏️ Editing Article (Row {row_id + 1})")
-            
-            # Get current version (with all edits applied so far)
-            current_article = st.session_state.get(f'article_current_{row_id}', '')
-            
-            # Display current article (read-only for now to avoid conflicts)
-            st.text_area(
-                "Current Article",
-                value=current_article,
-                height=400,
-                key=f'article_viewer_{row_id}',
-                help="Copy text from here to refine with AI. This updates after each accepted change."
-            )
-            
-            col1, col2 = st.columns([1, 5])
-            with col1:
-                if st.button("💾 Save & Close"):
-                    st.session_state.ai_row_id = None
-                    st.session_state.ai_selected_text = ""
-                    st.session_state.ai_preview = ""
+                    st.warning(f"Queue #{queue_pos}")
+            # Show add links button
+            else:
+                files_ready = article_file and link_client
+                if st.button(
+                    "🔗 Add Links",
+                    key=f"link_gen_{row_id}",
+                    disabled=not files_ready,
+                    use_container_width=True
+                ):
+                    # Add to queue
+                    st.session_state.link_queue.append(row_id)
+                    # Store data
+                    article_text = article_file.read().decode('utf-8')
+                    st.session_state[f'link_data_{row_id}'] = {
+                        'title': title,
+                        'article_text': article_text,
+                        'num_links': num_links,
+                        'priority_urls': priority_urls,
+                        'sitemap_url': client_data['sitemap_url']
+                    }
                     st.rerun()
-    
-    # AI Chat Sidebar
-    with col_chat:
-        st.markdown("### 💬 AI Editor")
         
-        if st.session_state.ai_row_id is None:
-            st.info("👈 Click 'Edit' on a row to start editing with AI")
-        else:
-            # Selected text input
-            selected_text = st.text_area(
-                "Selected Text (paste here)",
-                height=100,
-                key="ai_selected_input",
-                placeholder="Copy text from the article and paste here..."
-            )
-            
-            # Update session state
-            st.session_state.ai_selected_text = selected_text
-            
-            # Chat input
-            instruction = st.text_input(
-                "Your instruction",
-                placeholder="e.g., 'make this more concise'",
-                key="ai_instruction"
-            )
-            
-            if st.button("✨ Refine", disabled=not selected_text or not instruction):
-                # Call Claude to refine
-                row_id = st.session_state.ai_row_id
-                
-                with st.spinner("AI is refining..."):
-                    try:
-                        from anthropic import Anthropic
-                        client = Anthropic(api_key=api_key)
-                        
-                        prompt = f"""You are helping refine article content.
-
-SELECTED TEXT TO REFINE:
-{st.session_state.ai_selected_text}
-
-USER INSTRUCTION:
-{instruction}
-
-CONTEXT - Target Audience:
-{client_data['icp_brief']}
-
-CONTEXT - Company:
-{client_data['company_brief']}
-
-Task: Apply the user's instruction to refine the selected text. Keep changes focused on what was requested. Return ONLY the refined text, no explanations.
-
-Refined text:"""
-                        
-                        message = client.messages.create(
-                            model="claude-sonnet-4-20250514",
-                            max_tokens=2000,
-                            messages=[{"role": "user", "content": prompt}]
-                        )
-                        
-                        refined_text = message.content[0].text.strip()
-                        st.session_state.ai_preview = refined_text
-                        st.rerun()
-                        
-                    except Exception as e:
-                        st.error(f"Error: {str(e)}")
-            
-            # Preview box
-            if st.session_state.ai_preview:
-                st.markdown("**AI Suggestion:**")
-                st.text_area(
-                    "Preview",
-                    value=st.session_state.ai_preview,
-                    height=150,
-                    key="ai_preview_box",
-                    disabled=True
-                )
-                
-                col1, col2 = st.columns(2)
-                with col1:
-                    if st.button("✅ Accept", use_container_width=True):
-                        # Replace selected text with refined version in current article
-                        row_id = st.session_state.ai_row_id
-                        current_article = st.session_state.get(f'article_current_{row_id}', '')
-                        
-                        # Only replace if selected text is found
-                        if st.session_state.ai_selected_text in current_article:
-                            updated_article = current_article.replace(
-                                st.session_state.ai_selected_text,
-                                st.session_state.ai_preview,
-                                1
-                            )
-                            # Update current version with the change
-                            st.session_state[f'article_current_{row_id}'] = updated_article
-                            
-                            # Clear state
-                            st.session_state.ai_preview = ""
-                            st.session_state.ai_selected_text = ""
-                            
-                            st.success("✅ Changes applied! Article updated.")
-                            time.sleep(1)
-                            st.rerun()
-                        else:
-                            st.warning("⚠️ Selected text not found. Copy exact text from article.")
-                
-                with col2:
-                    if st.button("✗ Reject", use_container_width=True):
-                        st.session_state.ai_preview = ""
-                        st.rerun()
+        # Status/Download column
+        with cols[5]:
+            if row_id in st.session_state.link_results:
+                result = st.session_state.link_results[row_id]
+                if result['status'] == 'complete':
+                    st.download_button(
+                        "📄 Download",
+                        data=result['doc_bytes'],
+                        file_name=f"{title or 'article'}_linked_{row_id}.docx",
+                        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                        key=f"link_download_{row_id}",
+                        use_container_width=True
+                    )
+                elif result['status'] == 'error':
+                    st.caption(result['error'][:50] + "...")
     
     # Process queue
     if st.session_state.link_queue:
@@ -649,3 +489,141 @@ Refined text:"""
             else:
                 st.sidebar.write(f"⏳ Row {row_id + 1} - Queued")
 
+# TAB 4: AI EDITOR
+with tab4:
+    st.header("✏️ AI Editor")
+    st.markdown("Edit your article with AI assistance through conversation")
+    
+    # Initialize editor state
+    if 'editor_article' not in st.session_state:
+        st.session_state.editor_article = ""
+    if 'editor_chat_history' not in st.session_state:
+        st.session_state.editor_chat_history = []
+    
+    # Client selector (for context)
+    if st.session_state.clients:
+        editor_client = st.selectbox(
+            "Select Client (for context)",
+            options=list(st.session_state.clients.keys()),
+            key="editor_client_select"
+        )
+        editor_client_data = st.session_state.clients[editor_client]
+    else:
+        st.warning("⚠️ No clients available. Create a client first for better AI context.")
+        editor_client_data = None
+    
+    st.markdown("---")
+    
+    # Input: Upload or paste article
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        uploaded_file = st.file_uploader("Upload Article", type=['md', 'txt'], key="editor_upload")
+        if uploaded_file and st.button("Load File"):
+            st.session_state.editor_article = uploaded_file.read().decode('utf-8')
+            st.session_state.editor_chat_history = []
+            st.success("Article loaded!")
+            st.rerun()
+    
+    with col2:
+        if st.button("Or Paste Text"):
+            st.session_state.editor_article = ""
+            st.session_state.editor_chat_history = []
+            st.rerun()
+    
+    # If no article yet, show paste area
+    if not st.session_state.editor_article:
+        pasted_text = st.text_area("Paste your article here", height=300, key="paste_area")
+        if st.button("Start Editing") and pasted_text:
+            st.session_state.editor_article = pasted_text
+            st.rerun()
+        st.stop()
+    
+    # Show current article
+    st.markdown("### Current Article")
+    with st.expander("View Full Article", expanded=False):
+        st.markdown(st.session_state.editor_article)
+    
+    # Chat interface
+    st.markdown("### 💬 Give Instructions")
+    
+    # Show chat history
+    for msg in st.session_state.editor_chat_history:
+        with st.chat_message(msg["role"]):
+            st.write(msg["content"])
+    
+    # Chat input
+    if prompt := st.chat_input("Tell AI what to change (e.g., 'make the intro more concise')"):
+        
+        # Add user message to history
+        st.session_state.editor_chat_history.append({"role": "user", "content": prompt})
+        
+        # Call Claude
+        with st.spinner("AI is updating your article..."):
+            try:
+                from anthropic import Anthropic
+                client = Anthropic(api_key=api_key)
+                
+                context_text = ""
+                if editor_client_data:
+                    context_text = f"""
+CONTEXT - Target Audience:
+{editor_client_data['icp_brief']}
+
+CONTEXT - Company:
+{editor_client_data['company_brief']}
+"""
+                
+                ai_prompt = f"""You are editing an article based on user instructions.
+
+CURRENT ARTICLE:
+{st.session_state.editor_article}
+
+{context_text}
+
+USER INSTRUCTION:
+{prompt}
+
+Task: Apply the user's instruction to the article. Return the COMPLETE updated article with the changes applied. Do not add explanations, just return the updated article text.
+
+Updated article:"""
+                
+                message = client.messages.create(
+                    model="claude-sonnet-4-20250514",
+                    max_tokens=8000,
+                    messages=[{"role": "user", "content": ai_prompt}]
+                )
+                
+                updated_article = message.content[0].text.strip()
+                
+                # Update article
+                st.session_state.editor_article = updated_article
+                
+                # Add AI response to history
+                st.session_state.editor_chat_history.append({
+                    "role": "assistant",
+                    "content": "✅ Article updated! You can continue editing or download the result."
+                })
+                
+                st.rerun()
+                
+            except Exception as e:
+                st.error(f"Error: {str(e)}")
+    
+    # Download button
+    st.markdown("---")
+    col1, col2, col3 = st.columns([1, 1, 2])
+    
+    with col1:
+        st.download_button(
+            "📄 Download Article",
+            data=st.session_state.editor_article,
+            file_name="edited_article.md",
+            mime="text/markdown"
+        )
+    
+    with col2:
+        if st.button("🔄 Start Over"):
+            st.session_state.editor_article = ""
+            st.session_state.editor_chat_history = []
+            st.rerun()
