@@ -628,12 +628,11 @@ Updated article:"""
             st.session_state.editor_chat_history = []
             st.rerun()
 
-st.write(f"DEBUG: About to render tab5, tabs defined: {tab1}, {tab2}, {tab3}, {tab4}, {tab5}")
-
 # TAB 5: BRIEF RESEARCH
 with tab5:
     st.write("Hello from tab 5")
 
 with tab6:
     st.write("Test tab works")
+
 
