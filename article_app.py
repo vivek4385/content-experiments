@@ -563,7 +563,7 @@ with tab5:
                     try:
                         st.text(f"Scraping {idx}/{len(urls)}: {url[:50]}...")
                         result = firecrawl.scrape(url)
-                        markdown = result.get('markdown', '')
+                        markdown = result.markdown if hasattr(result, 'markdown') else ''
                         
                         if not markdown:
                             scrape_errors.append(f"{url}: No markdown content returned")
@@ -955,6 +955,7 @@ Updated article:"""
             st.session_state.editor_article = ""
             st.session_state.editor_chat_history = []
             st.rerun()
+
 
 
 
