@@ -632,12 +632,14 @@ with tab5:
     st.header("🔍 Brief Research")
     st.markdown("Research topics, generate article structure, and create writing guidelines")
     
-    # Get API keys from secrets
+    # Debug: Check secrets
+    st.write("Debug - Checking secrets...")
     try:
         serpapi_key = st.secrets["SERPAPI_KEY"]
         firecrawl_key = st.secrets["FIRECRAWL_KEY"]
-    except:
-        st.error("⚠️ API keys not configured. Add SERPAPI_KEY and FIRECRAWL_KEY to Streamlit secrets.")
+        st.success(f"✅ Secrets loaded: SerpAPI={bool(serpapi_key)}, FireCrawl={bool(firecrawl_key)}")
+    except Exception as e:
+        st.error(f"❌ Secrets error: {str(e)}")
         st.stop()
     
     # Initialize research state
@@ -935,4 +937,5 @@ Generate guidelines now:"""
                 
             except Exception as e:
                 st.error(f"Error generating guidelines: {str(e)}")
+
 
