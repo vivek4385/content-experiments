@@ -1030,7 +1030,7 @@ with tab5:
                 st.markdown("### 📄 Sources")
                 
                 # Display results with highlights
-                 for idx, result in enumerate(results.results, 1):
+                for idx, result in enumerate(results.results, 1):
                     with st.expander(f"📄 {idx}. {result.title}", expanded=(idx <= 3)):
                         st.markdown(f"**[Visit Source]({result.url})**")
         
@@ -1190,6 +1190,7 @@ Updated article:"""
             st.session_state.editor_article = ""
             st.session_state.editor_chat_history = []
             st.rerun()
+
 
 
 
