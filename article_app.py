@@ -489,8 +489,8 @@ with tab4:
             else:
                 st.sidebar.write(f"⏳ Row {row_id + 1} - Queued")
 
-# TAB 5: CONTENT BRIEFS
-with tab5:
+# TAB 2: CONTENT BRIEFS
+with tab2:
     st.header("🔍 Content Briefs")
     st.markdown("Research topics, generate article structure, and create writing guidelines")
     
@@ -1149,3 +1149,4 @@ Updated article:"""
             st.session_state.editor_article = ""
             st.session_state.editor_chat_history = []
             st.rerun()
+
