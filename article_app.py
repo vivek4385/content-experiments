@@ -975,7 +975,6 @@ with tab6:
             except Exception as e:
                 st.error(f"Error generating updates: {str(e)}")
                 
-# TAB 5: RESEARCH
 with tab5:
     st.header("🔎 Research")
     
@@ -1006,46 +1005,45 @@ with tab5:
                 start_published = start_date.strftime("%Y-%m-%dT00:00:00.000Z")
                 
                 # Search with highlights and summary
-                results = exa.search_and_contents(
+                search_results = exa.search_and_contents(
                     query,
                     highlights=True,
-                    summary = {
+                    summary={
                         "query": "List the statistic most in line with the query"
-                      },
+                    },
                     num_results=5,
                     start_published_date=start_published,
                     end_published_date=end_published,
                     type="auto"
                 )
                 
-                # Display summary if available
-                if hasattr(results, 'summary') and results.summary:
-                    st.markdown("### 📊 Summary")
-                    st.info(results.summary)
+                # Display aggregate summary if available
+                if hasattr(search_results, 'summary') and search_results.summary:
+                    st.markdown("### 📊 Overall Summary")
+                    st.info(search_results.summary)
                     st.markdown("---")
                 
-                # Display results
+                # Display individual results
                 st.markdown("### 📄 Sources")
                 
-                # Display results with highlights
-                for idx, results in enumerate(results.results, 1):
-                    with st.expander(f"📄 {idx}. {results.title}", expanded=(idx <= 3)):
-                        st.markdown(f"**[Visit Source]({results.url})**")
-        
-                # Show summary
-                if hasattr(results, 'summary') and results.summary:
-                    st.markdown("**Summary:**")
-                    st.info(results.summary)
-        
-                # Show highlights
-                if hasattr(results, 'highlights') and results.highlights:
-                    st.markdown("**Key Highlights:**")
-                    for highlight in results.highlights:
-                        st.markdown(f"- {highlight}")
+                for idx, result in enumerate(search_results.results, 1):
+                    with st.expander(f"📄 {idx}. {result.title}", expanded=(idx <= 3)):
+                        st.markdown(f"**[Visit Source]({result.url})**")
                         
-                        # Show published date if available
-                        if hasattr(results, 'published_date') and results.published_date:
-                            st.caption(f"Published: {results.published_date}")
+                        # Show individual result summary
+                        if hasattr(result, 'summary') and result.summary:
+                            st.markdown("**Summary:**")
+                            st.info(result.summary)
+                        
+                        # Show highlights
+                        if hasattr(result, 'highlights') and result.highlights:
+                            st.markdown("**Key Highlights:**")
+                            for highlight in result.highlights:
+                                st.markdown(f"- {highlight}")
+                        
+                        # Show published date
+                        if hasattr(result, 'published_date') and result.published_date:
+                            st.caption(f"📅 Published: {result.published_date}")
                 
             except Exception as e:
                 st.error(f"Error: {str(e)}")
@@ -1188,6 +1186,7 @@ Updated article:"""
             st.session_state.editor_article = ""
             st.session_state.editor_chat_history = []
             st.rerun()
+
 
 
 
