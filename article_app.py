@@ -1009,7 +1009,9 @@ with tab5:
                 results = exa.search_and_contents(
                     query,
                     highlights=True,
-                    text={"max_characters": 500},  # Get text snippet per result
+                    summary = {
+                        "query": "List the statistic most in line with the query"
+                      },
                     num_results=5,
                     start_published_date=start_published,
                     end_published_date=end_published,
@@ -1017,7 +1019,7 @@ with tab5:
                 )
                 
                 # Display summary if available
-                if hasattr(results, 'text') and results.summary:
+                if hasattr(results, 'summary') and results.summary:
                     st.markdown("### 📊 Summary")
                     st.info(results.summary)
                     st.markdown("---")
@@ -1186,6 +1188,7 @@ Updated article:"""
             st.session_state.editor_article = ""
             st.session_state.editor_chat_history = []
             st.rerun()
+
 
 
 
