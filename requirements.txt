@@ -4,3 +4,4 @@ python-docx
 requests
 google-search-results
 firecrawl-py
+exa-py
