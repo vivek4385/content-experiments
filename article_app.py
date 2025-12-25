@@ -975,8 +975,8 @@ with tab6:
             except Exception as e:
                 st.error(f"Error generating updates: {str(e)}")
                 
-# TAB 5: RESEARCH
-with tab5:
+# TAB 7: RESEARCH
+with tab7:
     st.header("🔎 Research")
     
     # Get API key
@@ -993,20 +993,55 @@ with tab5:
         with st.spinner("Searching..."):
             try:
                 from exa_py import Exa
+                from datetime import datetime, timedelta
                 
                 exa = Exa(api_key=exa_key)
-                results = exa.search_and_contents(query, num_results=5, text=True)
                 
-                # Output box
-                output = ""
+                # Calculate date range (last 1 year)
+                end_date = datetime.now()
+                start_date = end_date - timedelta(days=365)
+                
+                # Format dates for Exa
+                end_published = end_date.strftime("%Y-%m-%dT23:59:59.999Z")
+                start_published = start_date.strftime("%Y-%m-%dT00:00:00.000Z")
+                
+                # Search with highlights and summary
+                results = exa.search_and_contents(
+                    query,
+                    context=True,
+                    end_published_date=end_published,
+                    highlights=True,
+                    num_results=5,
+                    start_published_date=start_published,
+                    summary={
+                        "query": "summarize the relevant statistics in easily understood text."
+                    },
+                    text=True,
+                    type="auto"
+                )
+                
+                # Display summary if available
+                if hasattr(results, 'summary') and results.summary:
+                    st.markdown("### 📊 Summary")
+                    st.info(results.summary)
+                    st.markdown("---")
+                
+                # Display results
+                st.markdown("### 📄 Sources")
+                
                 for idx, result in enumerate(results.results, 1):
-                    output += f"{idx}. {result.title}\n"
-                    output += f"   Link: {result.url}\n"
-                    if hasattr(result, 'text') and result.text:
-                        output += f"   {result.text[:200]}...\n"
-                    output += "\n"
-                
-                st.text_area("Results", value=output, height=400)
+                    with st.expander(f"Result {idx}: {result.title}", expanded=(idx <= 2)):
+                        st.markdown(f"**URL:** [{result.url}]({result.url})")
+                        
+                        # Show highlights if available
+                        if hasattr(result, 'highlights') and result.highlights:
+                            st.markdown("**Key Highlights:**")
+                            for highlight in result.highlights:
+                                st.markdown(f"- {highlight}")
+                        
+                        # Show published date if available
+                        if hasattr(result, 'published_date') and result.published_date:
+                            st.caption(f"Published: {result.published_date}")
                 
             except Exception as e:
                 st.error(f"Error: {str(e)}")
@@ -1149,4 +1184,5 @@ Updated article:"""
             st.session_state.editor_article = ""
             st.session_state.editor_chat_history = []
             st.rerun()
+
 
