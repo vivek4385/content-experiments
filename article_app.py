@@ -1008,20 +1008,16 @@ with tab5:
                 # Search with highlights and summary
                 results = exa.search_and_contents(
                     query,
-                    context=True,
-                    end_published_date=end_published,
                     highlights=True,
+                    text={"max_characters": 500},  # Get text snippet per result
                     num_results=5,
                     start_published_date=start_published,
-                    summary={
-                        "query": "summarize the relevant statistics in easily understood text."
-                    },
-                    text=True,
+                    end_published_date=end_published,
                     type="auto"
                 )
                 
                 # Display summary if available
-                if hasattr(results, 'summary') and results.summary:
+                if hasattr(results, 'text') and results.summary:
                     st.markdown("### 📊 Summary")
                     st.info(results.summary)
                     st.markdown("---")
@@ -1190,6 +1186,7 @@ Updated article:"""
             st.session_state.editor_article = ""
             st.session_state.editor_chat_history = []
             st.rerun()
+
 
 
 
