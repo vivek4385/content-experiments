@@ -1020,11 +1020,7 @@ with tab5:
                 # Display individual results
                 st.markdown("### 📄 Sources")
 
-                # Debug
-                st.write(f"DEBUG: Total results found: {len(search_results.results)}")
-
-                for idx, result in enumerate(search_results.results, 1):
-                    st.write(f"DEBUG: Processing result {idx}")  # Debug line
+                for idx, result in enumerate(search_results.results, 1):   
     
                     with st.expander(f"📄 {idx}. {result.title}", expanded=(idx <= 3)):
                         st.markdown(f"**[Visit Source]({result.url})**")
@@ -1037,7 +1033,6 @@ with tab5:
                         # Show highlights
                         if hasattr(result, 'highlights') and result.highlights:
                             st.markdown("**Key Highlights:**")
-                            st.write(f"DEBUG: Number of highlights: {len(result.highlights)}")  # Debug
                             for highlight in result.highlights:
                                 st.markdown(f"- {highlight}")
         
@@ -1186,6 +1181,7 @@ Updated article:"""
             st.session_state.editor_article = ""
             st.session_state.editor_chat_history = []
             st.rerun()
+
 
 
 
