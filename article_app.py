@@ -1029,15 +1029,21 @@ with tab5:
                 # Display results
                 st.markdown("### 📄 Sources")
                 
-                for idx, result in enumerate(results.results, 1):
-                    with st.expander(f"Result {idx}: {result.title}", expanded=(idx <= 2)):
-                        st.markdown(f"**URL:** [{result.url}]({result.url})")
-                        
-                        # Show highlights if available
-                        if hasattr(result, 'highlights') and result.highlights:
-                            st.markdown("**Key Highlights:**")
-                            for highlight in result.highlights:
-                                st.markdown(f"- {highlight}")
+                # Display results with highlights
+                 for idx, result in enumerate(results.results, 1):
+                    with st.expander(f"📄 {idx}. {result.title}", expanded=(idx <= 3)):
+                        st.markdown(f"**[Visit Source]({result.url})**")
+        
+                # Show summary
+                if hasattr(result, 'summary') and result.summary:
+                    st.markdown("**Summary:**")
+                    st.info(result.summary)
+        
+                # Show highlights
+                if hasattr(result, 'highlights') and result.highlights:
+                    st.markdown("**Key Highlights:**")
+                    for highlight in result.highlights:
+                        st.markdown(f"- {highlight}")
                         
                         # Show published date if available
                         if hasattr(result, 'published_date') and result.published_date:
@@ -1184,6 +1190,7 @@ Updated article:"""
             st.session_state.editor_article = ""
             st.session_state.editor_chat_history = []
             st.rerun()
+
 
 
 
