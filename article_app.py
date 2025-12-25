@@ -1017,30 +1017,30 @@ with tab5:
                     type="auto"
                 )
                 
-                # Display aggregate summary if available
-                if hasattr(search_results, 'summary') and search_results.summary:
-                    st.markdown("### 📊 Overall Summary")
-                    st.info(search_results.summary)
-                    st.markdown("---")
-                
                 # Display individual results
                 st.markdown("### 📄 Sources")
-                
+
+                # Debug
+                st.write(f"DEBUG: Total results found: {len(search_results.results)}")
+
                 for idx, result in enumerate(search_results.results, 1):
+                    st.write(f"DEBUG: Processing result {idx}")  # Debug line
+    
                     with st.expander(f"📄 {idx}. {result.title}", expanded=(idx <= 3)):
                         st.markdown(f"**[Visit Source]({result.url})**")
-                        
+        
                         # Show individual result summary
                         if hasattr(result, 'summary') and result.summary:
                             st.markdown("**Summary:**")
                             st.info(result.summary)
-                        
+        
                         # Show highlights
                         if hasattr(result, 'highlights') and result.highlights:
                             st.markdown("**Key Highlights:**")
+                            st.write(f"DEBUG: Number of highlights: {len(result.highlights)}")  # Debug
                             for highlight in result.highlights:
                                 st.markdown(f"- {highlight}")
-                        
+        
                         # Show published date
                         if hasattr(result, 'published_date') and result.published_date:
                             st.caption(f"📅 Published: {result.published_date}")
@@ -1186,6 +1186,7 @@ Updated article:"""
             st.session_state.editor_article = ""
             st.session_state.editor_chat_history = []
             st.rerun()
+
 
 
 
