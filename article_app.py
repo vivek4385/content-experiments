@@ -1028,24 +1028,24 @@ with tab5:
                 st.markdown("### 📄 Sources")
                 
                 # Display results with highlights
-                for idx, result in enumerate(results.results, 1):
-                    with st.expander(f"📄 {idx}. {result.title}", expanded=(idx <= 3)):
-                        st.markdown(f"**[Visit Source]({result.url})**")
+                for idx, results in enumerate(results.results, 1):
+                    with st.expander(f"📄 {idx}. {results.title}", expanded=(idx <= 3)):
+                        st.markdown(f"**[Visit Source]({results.url})**")
         
                 # Show summary
-                if hasattr(result, 'summary') and result.summary:
+                if hasattr(results, 'summary') and results.summary:
                     st.markdown("**Summary:**")
-                    st.info(result.summary)
+                    st.info(results.summary)
         
                 # Show highlights
-                if hasattr(result, 'highlights') and result.highlights:
+                if hasattr(results, 'highlights') and results.highlights:
                     st.markdown("**Key Highlights:**")
-                    for highlight in result.highlights:
+                    for highlight in results.highlights:
                         st.markdown(f"- {highlight}")
                         
                         # Show published date if available
-                        if hasattr(result, 'published_date') and result.published_date:
-                            st.caption(f"Published: {result.published_date}")
+                        if hasattr(results, 'published_date') and results.published_date:
+                            st.caption(f"Published: {results.published_date}")
                 
             except Exception as e:
                 st.error(f"Error: {str(e)}")
@@ -1188,6 +1188,7 @@ Updated article:"""
             st.session_state.editor_article = ""
             st.session_state.editor_chat_history = []
             st.rerun()
+
 
 
 
