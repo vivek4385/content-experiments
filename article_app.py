@@ -975,6 +975,56 @@ with tab6:
             except Exception as e:
                 st.error(f"Error generating updates: {str(e)}")
                 
+# TAB 7: RESEARCH
+with tab7:
+    st.header("🔎 Research")
+    st.markdown("Search for statistics, facts, and sources using Exa.ai")
+    
+    # Get API key
+    try:
+        exa_key = st.secrets["EXA_API_KEY"]
+    except:
+        st.error("⚠️ Exa API key not configured.")
+        st.stop()
+    
+    # Search input
+    query = st.text_area(
+        "What do you want to research?",
+        placeholder="e.g., statistics on AR managers losing productivity",
+        height=100
+    )
+    
+    if st.button("🔍 Search", disabled=not query):
+        with st.spinner("Searching..."):
+            try:
+                from exa_py import Exa
+                
+                exa = Exa(api_key=exa_key)
+                
+                # Search with Exa
+                results = exa.search_and_contents(
+                    query,
+                    num_results=10,
+                    text=True
+                )
+                
+                st.success(f"Found {len(results.results)} results")
+                
+                # Display results
+                for idx, result in enumerate(results.results, 1):
+                    with st.expander(f"📄 Result {idx}: {result.title}", expanded=(idx <= 3)):
+                        st.markdown(f"**URL:** [{result.url}]({result.url})")
+                        
+                        if hasattr(result, 'text') and result.text:
+                            st.markdown("**Excerpt:**")
+                            st.write(result.text[:500] + "..." if len(result.text) > 500 else result.text)
+                        
+                        if hasattr(result, 'published_date') and result.published_date:
+                            st.caption(f"Published: {result.published_date}")
+                
+            except Exception as e:
+                st.error(f"Error: {str(e)}")
+                
 # TAB 4: AI EDITOR
 with tab4:
     st.header("✏️ AI Editor")
@@ -1113,6 +1163,7 @@ Updated article:"""
             st.session_state.editor_article = ""
             st.session_state.editor_chat_history = []
             st.rerun()
+
 
 
 
