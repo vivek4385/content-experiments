@@ -79,8 +79,8 @@ with tab1:
         else:
             st.info("No clients yet. Create one to get started.")
 
-# TAB 2: GENERATE ARTICLES
-with tab2:
+# TAB 3: GENERATE ARTICLES
+with tab3:
     st.header("Article Generator")
     
     # Client selector
@@ -269,8 +269,8 @@ with tab2:
             else:
                 st.sidebar.write(f"⏳ Row {row_id + 1} - Queued")
 
-# TAB 3: ADD INTERNAL LINKS
-with tab3:
+# TAB 4: ADD INTERNAL LINKS
+with tab4:
     st.header("Add Internal Links")
     
     # Client selector
@@ -489,9 +489,9 @@ with tab3:
             else:
                 st.sidebar.write(f"⏳ Row {row_id + 1} - Queued")
 
-# TAB 5: BRIEF RESEARCH
+# TAB 5: CONTENT BRIEFS
 with tab5:
-    st.header("🔍 Brief Research")
+    st.header("🔍 Content Briefs")
     st.markdown("Research topics, generate article structure, and create writing guidelines")
     
     # Get API keys from secrets
@@ -817,9 +817,9 @@ Generate guidelines now:"""
             except Exception as e:
                 st.error(f"Error generating guidelines: {str(e)}")
     
-# TAB 6: CONTENT REFRESH ANALYZER
+# TAB 6: CONTENT REFRESH
 with tab6:
-    st.header("🔄 Content Refresh Analyzer")
+    st.header("🔄 Content Refresh")
     st.markdown("Analyze existing content and generate update recommendations")
     
     # Get API keys
@@ -975,8 +975,8 @@ with tab6:
             except Exception as e:
                 st.error(f"Error generating updates: {str(e)}")
                 
-# TAB 7: RESEARCH
-with tab7:
+# TAB 5: RESEARCH
+with tab5:
     st.header("🔎 Research")
     
     # Get API key
@@ -1011,8 +1011,8 @@ with tab7:
             except Exception as e:
                 st.error(f"Error: {str(e)}")
                 
-# TAB 4: AI EDITOR
-with tab4:
+# TAB 7: AI EDITOR
+with tab7:
     st.header("✏️ AI Editor")
     st.markdown("Edit your article with AI assistance through conversation")
     
@@ -1149,15 +1149,3 @@ Updated article:"""
             st.session_state.editor_article = ""
             st.session_state.editor_chat_history = []
             st.rerun()
-
-
-
-
-
-
-
-
-
-
-
-
