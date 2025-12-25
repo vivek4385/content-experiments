@@ -28,7 +28,7 @@ except:
     st.stop()
 
 # Main tabs
-tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["📁 Manage Clients", "📝 Generate Articles", "🔗 Add Internal Links", "✏️ AI Editor", "🔍 Brief Research", "Test"])
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["📁 Manage Clients", "📝 Generate Articles", "🔗 Add Internal Links", "✏️ AI Editor", "🔍 Brief Research", "🔄 Content Refresh"])
 
 # TAB 1: MANAGE CLIENTS
 with tab1:
@@ -817,6 +817,164 @@ Generate guidelines now:"""
             except Exception as e:
                 st.error(f"Error generating guidelines: {str(e)}")
     
+# TAB 6: CONTENT REFRESH ANALYZER
+with tab6:
+    st.header("🔄 Content Refresh Analyzer")
+    st.markdown("Analyze existing content and generate update recommendations")
+    
+    # Get API keys
+    try:
+        serpapi_key = st.secrets["SERPAPI_KEY"]
+        firecrawl_key = st.secrets["FIRECRAWL_KEY"]
+    except:
+        st.error("⚠️ API keys not configured.")
+        st.stop()
+    
+    # Client selector
+    if not st.session_state.clients:
+        st.warning("⚠️ No clients available. Create a client first for ICP context.")
+        st.stop()
+    
+    refresh_client = st.selectbox(
+        "Select Client (for ICP context)",
+        options=list(st.session_state.clients.keys()),
+        key="refresh_client_select"
+    )
+    
+    refresh_client_data = st.session_state.clients[refresh_client]
+    
+    st.markdown("---")
+    
+    # Initialize state
+    if 'refresh_recommendations' not in st.session_state:
+        st.session_state.refresh_recommendations = ""
+    if 'refresh_original_article' not in st.session_state:
+        st.session_state.refresh_original_article = ""
+    
+    # SECTION 1: ANALYZE CONTENT
+    st.subheader("Step 1: Analyze Content")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        uploaded_article = st.file_uploader("Upload Article", type=['md', 'txt'], key="refresh_article_upload")
+    
+    with col2:
+        keyword_input = st.text_input("Primary Keyword", placeholder="e.g., payment automation")
+    
+    if st.button("🔍 Analyze Content", disabled=not uploaded_article or not keyword_input):
+        with st.spinner("Analyzing content..."):
+            try:
+                from analyze_content import analyze_content_for_refresh
+                
+                # Read article
+                article_text = uploaded_article.read().decode('utf-8')
+                st.session_state.refresh_original_article = article_text
+                
+                # Progress tracking
+                status_text = st.empty()
+                
+                def update_progress(text):
+                    status_text.text(text)
+                
+                # Run analysis
+                recommendations = analyze_content_for_refresh(
+                    article_text=article_text,
+                    keyword=keyword_input,
+                    icp_brief=refresh_client_data['icp_brief'],
+                    serpapi_key=serpapi_key,
+                    firecrawl_key=firecrawl_key,
+                    api_key=api_key,
+                    progress_callback=update_progress
+                )
+                
+                st.session_state.refresh_recommendations = recommendations
+                
+                st.success("✓ Analysis complete!")
+                st.rerun()
+                
+            except Exception as e:
+                st.error(f"Error during analysis: {str(e)}")
+    
+    # Display recommendations if available
+    if st.session_state.refresh_recommendations:
+        st.markdown("### 📋 Refresh Recommendations")
+        
+        with st.expander("View Recommendations", expanded=True):
+            st.code(st.session_state.refresh_recommendations, language="markdown")
+        
+        st.download_button(
+            "📄 Download Recommendations",
+            data=st.session_state.refresh_recommendations,
+            file_name=f"{keyword_input.replace(' ', '_') if keyword_input else 'content'}_refresh_recommendations.md",
+            mime="text/markdown"
+        )
+        
+        st.info("💡 Review and edit these recommendations, then paste the edited version below to generate updates.")
+    
+    st.markdown("---")
+    
+    # SECTION 2: GENERATE UPDATES
+    st.subheader("Step 2: Generate Updates")
+    st.caption("Paste your edited recommendations here")
+    
+    edited_recommendations = st.text_area(
+        "Edited Recommendations",
+        height=300,
+        placeholder="Paste edited recommendations here...",
+        key="edited_recommendations_input"
+    )
+    
+    if st.button("✨ Generate Updates", disabled=not edited_recommendations):
+        with st.spinner("Generating updated sections..."):
+            try:
+                from write_article import generate_article
+                
+                # Progress tracking
+                status_text = st.empty()
+                
+                def update_progress(text, pct=None):
+                    status_text.text(text)
+                
+                # Generate updates using write_article logic
+                updated_sections, log = generate_article(
+                    article_brief_text=edited_recommendations,
+                    company_brief_text=refresh_client_data['company_brief'],
+                    icp_brief_text=refresh_client_data['icp_brief'],
+                    writing_guidelines_text=refresh_client_data.get('guidelines', ''),
+                    api_key=api_key,
+                    progress_callback=update_progress
+                )
+                
+                st.success("✓ Updates generated!")
+                
+                # Display results
+                st.markdown("### ✅ Generated Updates")
+                
+                with st.expander("View Updated Sections", expanded=True):
+                    st.markdown(updated_sections)
+                
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    st.download_button(
+                        "📄 Download Updates",
+                        data=updated_sections,
+                        file_name=f"{keyword_input.replace(' ', '_') if keyword_input else 'article'}_updates.md",
+                        mime="text/markdown"
+                    )
+                
+                with col2:
+                    st.download_button(
+                        "📋 Download Log",
+                        data=log,
+                        file_name="generation_log.txt",
+                        mime="text/plain"
+                    )
+                
+            except Exception as e:
+                st.error(f"Error generating updates: {str(e)}")
+                
 # TAB 4: AI EDITOR
 with tab4:
     st.header("✏️ AI Editor")
@@ -955,6 +1113,7 @@ Updated article:"""
             st.session_state.editor_article = ""
             st.session_state.editor_chat_history = []
             st.rerun()
+
 
 
 
