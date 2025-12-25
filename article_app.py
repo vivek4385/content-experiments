@@ -978,7 +978,6 @@ with tab6:
 # TAB 7: RESEARCH
 with tab7:
     st.header("🔎 Research")
-    st.markdown("Search for statistics, facts, and sources using Exa.ai")
     
     # Get API key
     try:
@@ -987,12 +986,8 @@ with tab7:
         st.error("⚠️ Exa API key not configured.")
         st.stop()
     
-    # Search input
-    query = st.text_area(
-        "What do you want to research?",
-        placeholder="e.g., statistics on AR managers losing productivity",
-        height=100
-    )
+    # Input
+    query = st.text_input("Search query", placeholder="e.g., statistics on AR managers losing productivity")
     
     if st.button("🔍 Search", disabled=not query):
         with st.spinner("Searching..."):
@@ -1000,27 +995,18 @@ with tab7:
                 from exa_py import Exa
                 
                 exa = Exa(api_key=exa_key)
+                results = exa.search_and_contents(query, num_results=5, text=True)
                 
-                # Search with Exa
-                results = exa.search_and_contents(
-                    query,
-                    num_results=10,
-                    text=True
-                )
-                
-                st.success(f"Found {len(results.results)} results")
-                
-                # Display results
+                # Output box
+                output = ""
                 for idx, result in enumerate(results.results, 1):
-                    with st.expander(f"📄 Result {idx}: {result.title}", expanded=(idx <= 3)):
-                        st.markdown(f"**URL:** [{result.url}]({result.url})")
-                        
-                        if hasattr(result, 'text') and result.text:
-                            st.markdown("**Excerpt:**")
-                            st.write(result.text[:500] + "..." if len(result.text) > 500 else result.text)
-                        
-                        if hasattr(result, 'published_date') and result.published_date:
-                            st.caption(f"Published: {result.published_date}")
+                    output += f"{idx}. {result.title}\n"
+                    output += f"   Link: {result.url}\n"
+                    if hasattr(result, 'text') and result.text:
+                        output += f"   {result.text[:200]}...\n"
+                    output += "\n"
+                
+                st.text_area("Results", value=output, height=400)
                 
             except Exception as e:
                 st.error(f"Error: {str(e)}")
@@ -1163,6 +1149,7 @@ Updated article:"""
             st.session_state.editor_article = ""
             st.session_state.editor_chat_history = []
             st.rerun()
+
 
 
 
