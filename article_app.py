@@ -975,8 +975,8 @@ with tab6:
             except Exception as e:
                 st.error(f"Error generating updates: {str(e)}")
                 
-# TAB 7: RESEARCH
-with tab7:
+# TAB 5: RESEARCH
+with tab5:
     st.header("🔎 Research")
     
     # Get API key
@@ -1184,5 +1184,6 @@ Updated article:"""
             st.session_state.editor_article = ""
             st.session_state.editor_chat_history = []
             st.rerun()
+
 
 
