@@ -1060,7 +1060,7 @@ with tab7:
         st.error(f"Failed to initialize clients: {str(e)}")
         st.stop()
 
-    def search_transcripts(index, query, top_k=50, content_filter=None):
+    def search_transcripts(index, query, top_k=50, content_filter=None, transcript_id=None):
         """Search transcripts and return top K results with optional filtering."""
         response = st.session_state.openai_client.embeddings.create(
             model="text-embedding-3-small",
@@ -1068,27 +1068,41 @@ with tab7:
         )
         query_embedding = response.data[0].embedding
         
-        # Build filter based on content type selection
-        filter_dict = None
+        # Build filter based on selections
+        filter_dict = {}
+        
+        # Add content type filter
         if content_filter and content_filter != "All content":
             if content_filter == "Raw transcripts":
-                filter_dict = {"type": "raw_transcript"}
+                filter_dict["type"] = "raw_transcript"
             elif content_filter == "Main Pain Points/Problems":
-                filter_dict = {"type": "analyzed", "section": "pain_points"}
+                filter_dict["type"] = "analyzed"
+                filter_dict["section"] = "pain_points"
             elif content_filter == "Questions Asked":
-                filter_dict = {"type": "analyzed", "section": "questions"}
+                filter_dict["type"] = "analyzed"
+                filter_dict["section"] = "questions"
             elif content_filter == "Concerns/Challenges Raised":
-                filter_dict = {"type": "analyzed", "section": "concerns"}
+                filter_dict["type"] = "analyzed"
+                filter_dict["section"] = "concerns"
             elif content_filter == "Key Topics Discussed":
-                filter_dict = {"type": "analyzed", "section": "key_topics"}
+                filter_dict["type"] = "analyzed"
+                filter_dict["section"] = "key_topics"
             elif content_filter == "Potential Content Ideas":
-                filter_dict = {"type": "analyzed", "section": "content_ideas"}
+                filter_dict["type"] = "analyzed"
+                filter_dict["section"] = "content_ideas"
+        
+        # Add transcript ID filter if provided
+        if transcript_id and transcript_id.strip():
+            filter_dict["transcript_id"] = transcript_id.strip()
+        
+        # Use filter only if we have conditions
+        final_filter = filter_dict if filter_dict else None
         
         results = index.query(
             vector=query_embedding,
             top_k=top_k,
             include_metadata=True,
-            filter=filter_dict
+            filter=final_filter
         )
         
         return results['matches']
@@ -1130,20 +1144,30 @@ with tab7:
 
     st.markdown("---")
     
-    # Content filter dropdown
-    content_filter = st.selectbox(
-        "Filter by content type",
-        [
-            "All content",
-            "Raw transcripts",
-            "Main Pain Points/Problems",
-            "Questions Asked",
-            "Concerns/Challenges Raised",
-            "Key Topics Discussed",
-            "Potential Content Ideas"
-        ],
-        help="Filter results by specific section type"
-    )
+    # Filters
+    col1, col2 = st.columns([2, 1])
+    
+    with col1:
+        content_filter = st.selectbox(
+            "Filter by content type",
+            [
+                "All content",
+                "Raw transcripts",
+                "Main Pain Points/Problems",
+                "Questions Asked",
+                "Concerns/Challenges Raised",
+                "Key Topics Discussed",
+                "Potential Content Ideas"
+            ],
+            help="Filter results by specific section type"
+        )
+    
+    with col2:
+        transcript_id_filter = st.text_input(
+            "Filter by Transcript ID (optional)",
+            placeholder="e.g., 2088319907826763690",
+            help="Enter a specific transcript ID to search within only that transcript"
+        )
 
     # Search box
     query = st.text_input(
@@ -1161,7 +1185,8 @@ with tab7:
                     index, 
                     query, 
                     top_k=50,
-                    content_filter=content_filter
+                    content_filter=content_filter,
+                    transcript_id=transcript_id_filter
                 )
 
     # Display results
@@ -1374,6 +1399,7 @@ Updated article:"""
             st.session_state.editor_article = ""
             st.session_state.editor_chat_history = []
             st.rerun()
+
 
 
 
