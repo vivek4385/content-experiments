@@ -5,3 +5,8 @@ requests
 google-search-results
 firecrawl-py
 exa-py
+pinecone-client
+openai
+python-dotenv
+tqdm
+streamlit
