@@ -31,7 +31,7 @@ except:
     st.stop()
 
 # Main tabs
-tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs(["📁 Manage Clients","🔍 Content Briefs", "📝 Generate Articles", "🔗 Add Internal Links", "🔎 Research", "🔄 Content Refresh","✏️ AI Editor", "🗄️ DB Research"])
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs(["📁 Manage Clients","🔍 Content Briefs", "📝 Generate Articles", "🔗 Add Internal Links", "🔎 Research", "🔄 Content Refresh","🗄️ DB Research","✏️ AI Editor"])
 
 # TAB 1: MANAGE CLIENTS
 with tab1:
@@ -1046,8 +1046,8 @@ with tab5:
             except Exception as e:
                 st.error(f"Error: {str(e)}")
                 
-# TAB 8: DB RESEARCH
-with tab8:
+# TAB 7: DB RESEARCH
+with tab7:
     st.header("🗄️ DB Research")
     
     # Initialize clients
@@ -1185,8 +1185,8 @@ with tab8:
                         st.rerun()
 
 
-# TAB 7: AI EDITOR
-with tab7:
+# TAB 8: AI EDITOR
+with tab8:
     st.header("✏️ AI Editor")
     st.markdown("Edit your article with AI assistance through conversation")
     
@@ -1323,6 +1323,7 @@ Updated article:"""
             st.session_state.editor_article = ""
             st.session_state.editor_chat_history = []
             st.rerun()
+
 
 
 
