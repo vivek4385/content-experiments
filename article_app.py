@@ -3,6 +3,9 @@ from write_article import generate_article
 from add_internal_links import add_internal_links
 import json
 import time
+from pinecone import Pinecone
+from openai import OpenAI
+import math
 
 st.set_page_config(page_title="Article Generator - Multi-Client", page_icon="📝", layout="wide")
 
@@ -28,7 +31,7 @@ except:
     st.stop()
 
 # Main tabs
-tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(["📁 Manage Clients","🔍 Content Briefs", "📝 Generate Articles", "🔗 Add Internal Links", "🔎 Research", "🔄 Content Refresh","✏️ AI Editor"])
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs(["📁 Manage Clients","🔍 Content Briefs", "📝 Generate Articles", "🔗 Add Internal Links", "🔎 Research", "🔄 Content Refresh","✏️ AI Editor", "🗄️ DB Research"])
 
 # TAB 1: MANAGE CLIENTS
 with tab1:
@@ -1043,6 +1046,145 @@ with tab5:
             except Exception as e:
                 st.error(f"Error: {str(e)}")
                 
+# TAB 8: DB RESEARCH
+with tab8:
+    st.header("🗄️ DB Research")
+    
+    # Initialize clients
+    try:
+        if 'pinecone_client' not in st.session_state:
+            st.session_state.pinecone_client = Pinecone(api_key=st.secrets["PINECONE_API_KEY"])
+        if 'openai_client' not in st.session_state:
+            st.session_state.openai_client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+    except Exception as e:
+        st.error(f"Failed to initialize clients: {str(e)}")
+        st.stop()
+
+    def search_transcripts(index, query, top_k=50):
+        """Search transcripts and return top K results."""
+        response = st.session_state.openai_client.embeddings.create(
+            model="text-embedding-3-small",
+            input=query
+        )
+        query_embedding = response.data[0].embedding
+        
+        results = index.query(
+            vector=query_embedding,
+            top_k=top_k,
+            include_metadata=True
+        )
+        
+        return results['matches']
+
+    # Initialize session state
+    if 'db_research_page' not in st.session_state:
+        st.session_state.db_research_page = 0
+    if 'db_research_results' not in st.session_state:
+        st.session_state.db_research_results = None
+
+    # Get available indexes
+    @st.cache_data(ttl=60)
+    def get_available_indexes():
+        pc = Pinecone(api_key=st.secrets["PINECONE_API_KEY"])
+        indexes = pc.list_indexes()
+        return [idx.name for idx in indexes]
+
+    try:
+        available_indexes = get_available_indexes()
+    except Exception as e:
+        st.error(f"Failed to connect to Pinecone: {str(e)}")
+        st.stop()
+
+    # Index selector
+    if available_indexes:
+        selected_index = st.selectbox(
+            "Select Database",
+            available_indexes,
+            help="Choose which client database to search"
+        )
+        
+        index = st.session_state.pinecone_client.Index(selected_index)
+        stats = index.describe_index_stats()
+        
+        st.markdown(f"**Database:** `{selected_index}` | **Total vectors:** {stats['total_vector_count']:,}")
+    else:
+        st.error("No indexes found in your Pinecone account!")
+        st.stop()
+
+    st.markdown("---")
+
+    # Search box
+    query = st.text_input(
+        "What are you looking for?",
+        placeholder="e.g., integration delays, pricing objections, competitor mentions..."
+    )
+
+    # Search button
+    if st.button("Search", type="primary"):
+        if query:
+            st.session_state.db_research_page = 0
+            
+            with st.spinner("Searching transcripts..."):
+                st.session_state.db_research_results = search_transcripts(index, query, top_k=50)
+
+    # Display results
+    if st.session_state.db_research_results:
+        results = st.session_state.db_research_results
+        total_results = len(results)
+        
+        if total_results == 0:
+            st.info("No results found. Try a different search term.")
+        else:
+            results_per_page = 10
+            total_pages = math.ceil(total_results / results_per_page)
+            current_page = st.session_state.db_research_page
+            
+            start_idx = current_page * results_per_page
+            end_idx = min(start_idx + results_per_page, total_results)
+            
+            st.markdown(f"### Found {total_results} results (showing {start_idx + 1}-{end_idx})")
+            st.markdown("---")
+            
+            for i, match in enumerate(results[start_idx:end_idx], start=start_idx + 1):
+                metadata = match['metadata']
+                score = match['score']
+                
+                with st.expander(f"**Result {i}** | Similarity: {score:.3f} | Transcript: `{metadata['transcript_id']}`"):
+                    col1, col2 = st.columns([3, 1])
+                    
+                    with col1:
+                        st.markdown("**Speakers:**")
+                        st.write(metadata['speakers'])
+                        
+                        st.markdown("**Conversation:**")
+                        st.write(metadata['text'])
+                    
+                    with col2:
+                        st.markdown("**Metadata:**")
+                        st.write(f"Chunk: {metadata['chunk_position']}")
+                        st.write(f"Turns: {metadata['num_turns']}")
+            
+            st.markdown("---")
+            
+            # Pagination
+            col1, col2, col3 = st.columns([1, 2, 1])
+            
+            with col1:
+                if current_page > 0:
+                    if st.button("← Previous"):
+                        st.session_state.db_research_page -= 1
+                        st.rerun()
+            
+            with col2:
+                st.write(f"Page {current_page + 1} of {total_pages}")
+            
+            with col3:
+                if current_page < total_pages - 1:
+                    if st.button("Next →"):
+                        st.session_state.db_research_page += 1
+                        st.rerun()
+
+
 # TAB 7: AI EDITOR
 with tab7:
     st.header("✏️ AI Editor")
@@ -1181,6 +1323,7 @@ Updated article:"""
             st.session_state.editor_article = ""
             st.session_state.editor_chat_history = []
             st.rerun()
+
 
 
 
