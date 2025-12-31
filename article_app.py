@@ -1157,8 +1157,9 @@ with tab8:
                 with st.expander(
                     f"**Result {i}** | Similarity: {score:.3f} | Transcript: `{metadata['transcript_id']}`", 
                     expanded=(i == start_idx + 1),
-                    key=f"db_research_result_{i}"
+                    key=f"db_research_result_{metadata['transcript_id']}_{metadata['chunk_position']}"  # Use unique ID instead
                 ):
+                    
                     col1, col2 = st.columns([3, 1])
                     
                     with col1:
@@ -1325,6 +1326,7 @@ Updated article:"""
             st.session_state.editor_article = ""
             st.session_state.editor_chat_history = []
             st.rerun()
+
 
 
 
