@@ -3,11 +3,6 @@ from write_article import generate_article
 from add_internal_links import add_internal_links
 import json
 import time
-import os
-from dotenv import load_dotenv
-from pinecone import Pinecone
-from openai import OpenAI
-import math
 
 st.set_page_config(page_title="Article Generator - Multi-Client", page_icon="📝", layout="wide")
 
@@ -1047,7 +1042,7 @@ with tab5:
                 
             except Exception as e:
                 st.error(f"Error: {str(e)}")
-
+                
 # TAB 7: AI EDITOR
 with tab7:
     st.header("✏️ AI Editor")
@@ -1186,15 +1181,6 @@ Updated article:"""
             st.session_state.editor_article = ""
             st.session_state.editor_chat_history = []
             st.rerun()
-
-
-
-
-
-
-
-
-
 
 
 
