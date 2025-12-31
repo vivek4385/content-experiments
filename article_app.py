@@ -1186,7 +1186,7 @@ with tab8:
                         st.rerun()
             
             with col2:
-                st.markdown(f"<center>Page {current_page + 1} of {total_pages}</center>", unsafe_a
+                st.markdown(f"<center>Page {current_page + 1} of {total_pages}</center>", unsafe_a)
 
 # TAB 7: AI EDITOR
 with tab7:
@@ -1326,6 +1326,7 @@ Updated article:"""
             st.session_state.editor_article = ""
             st.session_state.editor_chat_history = []
             st.rerun()
+
 
 
 
