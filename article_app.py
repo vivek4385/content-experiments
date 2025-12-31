@@ -1050,6 +1050,9 @@ with tab5:
 
 # TAB 8: DB RESEARCH
 with tab8:
+    st.write("DEBUG: Tab 8 loaded")
+    st.write(f"DEBUG: Has PINECONE_API_KEY: {bool(st.secrets.get('PINECONE_API_KEY'))}")
+    st.write(f"DEBUG: Has OPENAI_API_KEY: {bool(st.secrets.get('OPENAI_API_KEY'))}")
     st.header("🗄️ DB Research")
     
     # Initialize clients (only once)
@@ -1325,6 +1328,7 @@ Updated article:"""
             st.session_state.editor_article = ""
             st.session_state.editor_chat_history = []
             st.rerun()
+
 
 
 
