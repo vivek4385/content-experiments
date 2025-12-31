@@ -3,7 +3,6 @@ from write_article import generate_article
 from add_internal_links import add_internal_links
 import json
 import time
-import db_research_tab
 import os
 from dotenv import load_dotenv
 from pinecone import Pinecone
@@ -1326,6 +1325,7 @@ Updated article:"""
             st.session_state.editor_article = ""
             st.session_state.editor_chat_history = []
             st.rerun()
+
 
 
 
