@@ -1060,18 +1060,35 @@ with tab7:
         st.error(f"Failed to initialize clients: {str(e)}")
         st.stop()
 
-    def search_transcripts(index, query, top_k=50):
-        """Search transcripts and return top K results."""
+    def search_transcripts(index, query, top_k=50, content_filter=None):
+        """Search transcripts and return top K results with optional filtering."""
         response = st.session_state.openai_client.embeddings.create(
             model="text-embedding-3-small",
             input=query
         )
         query_embedding = response.data[0].embedding
         
+        # Build filter based on content type selection
+        filter_dict = None
+        if content_filter and content_filter != "All content":
+            if content_filter == "Raw transcripts":
+                filter_dict = {"type": "raw_transcript"}
+            elif content_filter == "Main Pain Points/Problems":
+                filter_dict = {"type": "analyzed", "section": "pain_points"}
+            elif content_filter == "Questions Asked":
+                filter_dict = {"type": "analyzed", "section": "questions"}
+            elif content_filter == "Concerns/Challenges Raised":
+                filter_dict = {"type": "analyzed", "section": "concerns"}
+            elif content_filter == "Key Topics Discussed":
+                filter_dict = {"type": "analyzed", "section": "key_topics"}
+            elif content_filter == "Potential Content Ideas":
+                filter_dict = {"type": "analyzed", "section": "content_ideas"}
+        
         results = index.query(
             vector=query_embedding,
             top_k=top_k,
-            include_metadata=True
+            include_metadata=True,
+            filter=filter_dict
         )
         
         return results['matches']
@@ -1112,11 +1129,26 @@ with tab7:
         st.stop()
 
     st.markdown("---")
+    
+    # Content filter dropdown
+    content_filter = st.selectbox(
+        "Filter by content type",
+        [
+            "All content",
+            "Raw transcripts",
+            "Main Pain Points/Problems",
+            "Questions Asked",
+            "Concerns/Challenges Raised",
+            "Key Topics Discussed",
+            "Potential Content Ideas"
+        ],
+        help="Filter results by specific section type"
+    )
 
     # Search box
     query = st.text_input(
         "What are you looking for?",
-        placeholder="e.g., integration delays, pricing objections, competitor mentions..."
+        placeholder="e.g., BOL pain points, integration delays, pricing objections..."
     )
 
     # Search button
@@ -1125,7 +1157,12 @@ with tab7:
             st.session_state.db_research_page = 0
             
             with st.spinner("Searching transcripts..."):
-                st.session_state.db_research_results = search_transcripts(index, query, top_k=50)
+                st.session_state.db_research_results = search_transcripts(
+                    index, 
+                    query, 
+                    top_k=50,
+                    content_filter=content_filter
+                )
 
     # Display results
     if st.session_state.db_research_results:
@@ -1133,7 +1170,7 @@ with tab7:
         total_results = len(results)
         
         if total_results == 0:
-            st.info("No results found. Try a different search term.")
+            st.info("No results found. Try a different search term or filter.")
         else:
             results_per_page = 10
             total_pages = math.ceil(total_results / results_per_page)
@@ -1149,20 +1186,35 @@ with tab7:
                 metadata = match['metadata']
                 score = match['score']
                 
-                with st.expander(f"**Result {i}** | Similarity: {score:.3f} | Transcript: `{metadata['transcript_id']}`"):
-                    col1, col2 = st.columns([3, 1])
-                    
-                    with col1:
-                        st.markdown("**Speakers:**")
-                        st.write(metadata['speakers'])
-                        
-                        st.markdown("**Conversation:**")
+                # Build title based on content type
+                if metadata.get('type') == 'analyzed':
+                    section_name = metadata.get('section', 'unknown').replace('_', ' ').title()
+                    title = f"**Result {i}** | {section_name} | Similarity: {score:.3f} | Transcript: `{metadata['transcript_id']}`"
+                else:
+                    title = f"**Result {i}** | Raw Transcript | Similarity: {score:.3f} | Transcript: `{metadata['transcript_id']}`"
+                
+                with st.expander(title):
+                    # For analyzed content
+                    if metadata.get('type') == 'analyzed':
+                        st.markdown(f"**Section:** {section_name}")
+                        st.markdown("**Content:**")
                         st.write(metadata['text'])
                     
-                    with col2:
-                        st.markdown("**Metadata:**")
-                        st.write(f"Chunk: {metadata['chunk_position']}")
-                        st.write(f"Turns: {metadata['num_turns']}")
+                    # For raw transcripts
+                    else:
+                        col1, col2 = st.columns([3, 1])
+                        
+                        with col1:
+                            st.markdown("**Speakers:**")
+                            st.write(metadata.get('speakers', 'N/A'))
+                            
+                            st.markdown("**Conversation:**")
+                            st.write(metadata['text'])
+                        
+                        with col2:
+                            st.markdown("**Metadata:**")
+                            st.write(f"Chunk: {metadata.get('chunk_position', 'N/A')}")
+                            st.write(f"Turns: {metadata.get('num_turns', 'N/A')}")
             
             st.markdown("---")
             
@@ -1183,7 +1235,6 @@ with tab7:
                     if st.button("Next →"):
                         st.session_state.db_research_page += 1
                         st.rerun()
-
 
 # TAB 8: AI EDITOR
 with tab8:
@@ -1323,6 +1374,7 @@ Updated article:"""
             st.session_state.editor_article = ""
             st.session_state.editor_chat_history = []
             st.rerun()
+
 
 
 
